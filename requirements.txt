@@ -1,18 +1,7 @@
-# Instagram API Library
 instagrapi==2.1.2
-
-# MoviePy - IMPORTANT: Version 1.0.3 hi use karo (2.x nahi!)
 moviepy==1.0.3
-
-# OpenAI for AI Captions (Optional)
-openai==1.12.0
-
-# Image/Video Processing
 Pillow==10.2.0
-
-# Required by Instagrapi
 pydantic==2.7.1
-
-# Additional Utilities
 requests==2.31.0
 urllib3==2.2.0
+APScheduler==3.10.4
