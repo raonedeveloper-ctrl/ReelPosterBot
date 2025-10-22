@@ -267,16 +267,17 @@ class InstagramBotPro:
         )
         controls_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Control buttons with icons
+        # Control buttons with icons - UPDATED WITH STOP BUTTON
         buttons = [
             ("🔑 Login", self.login_dialog, "#4CAF50"),
             ("📂 Select Folder", self.select_folder, "#2196F3"),
             ("📤 Upload Single", self.upload_single_video, "#FF9800"),
             ("📦 Upload All", self.upload_all_videos, "#E91E63"),
             ("🎬 Manage Queue", self.show_queue_window, "#9C27B0"),
-            ("⏰ Auto-Schedule", self.start_auto_posting, "#673AB7"),
+            ("⏰ Start Auto-Post", self.start_auto_posting, "#4CAF50"),  # Green
+            ("⏹️ Stop Auto-Post", self.stop_auto_posting, "#f44336"),   # Red - NEW!
             ("📊 Analytics", self.show_dashboard, "#00BCD4"),
-            ("🔍 Shadow Ban Check", self.check_shadow_ban, "#FF5722"),
+            ("🔍 Shadow Ban", self.check_shadow_ban, "#FF5722"),
         ]
         
         for idx, (text, command, color) in enumerate(buttons):
@@ -297,6 +298,7 @@ class InstagramBotPro:
         
         controls_frame.grid_columnconfigure(0, weight=1)
         controls_frame.grid_columnconfigure(1, weight=1)
+
     
     def create_logs_panel(self, parent):
         """Activity logs panel"""
