@@ -5,11 +5,14 @@ import random
 import os
 from database_manager import DatabaseManager
 from caption_generator import CaptionGenerator
+from analytics_manager import AnalyticsManager
 from config import (
     SESSION_SAVE_PATH, 
     DELAY_BETWEEN_POSTS, 
     MAX_POSTS_PER_DAY,
-    SUPPORTED_VIDEO_FORMATS
+    SUPPORTED_VIDEO_FORMATS,
+    AUTO_POST_TO_STORY,
+    TRACK_ANALYTICS
 )
 
 class InstagramManager:
@@ -18,6 +21,7 @@ class InstagramManager:
         self.current_username = None
         self.db = DatabaseManager()
         self.caption_gen = CaptionGenerator()
+        self.analytics = AnalyticsManager()  # Analytics manager
     
     def login(self, username, password):
         """Instagram me login karo with session management"""
@@ -61,7 +65,7 @@ class InstagramManager:
             return False, f"Login error: {str(e)}"
     
     def upload_video(self, video_path, custom_caption=None):
-        """Video upload karo with safety checks"""
+        """Video upload karo with safety checks + analytics + story"""
         
         if not self.client or not self.current_username:
             return False, "Pehle login karo!"
@@ -94,7 +98,7 @@ class InstagramManager:
             print(f"📤 Uploading: {video_filename}")
             print(f"📝 Caption: {caption[:50]}...")
             
-            # Video upload karo
+            # Video upload karo as REEL
             media = self.client.video_upload(
                 video_path,
                 caption=caption,
@@ -116,6 +120,27 @@ class InstagramManager:
                 self.db.update_account_post_count(self.current_username)
                 
                 print(f"✅ Upload successful! Media ID: {media.pk}")
+                
+                # FEATURE 1: AUTO POST TO STORY
+                if AUTO_POST_TO_STORY:
+                    try:
+                        print("📱 Posting to story...")
+                        time.sleep(3)  # Small delay
+                        story_media = self.client.video_upload_to_story(video_path)
+                        if story_media:
+                            print("✅ Posted to story!")
+                    except Exception as e:
+                        print(f"⚠️ Story post failed: {e}")
+                
+                # FEATURE 2: ANALYTICS TRACKING
+                if TRACK_ANALYTICS:
+                    try:
+                        print("📊 Fetching analytics...")
+                        time.sleep(5)  # Wait for Instagram to process
+                        self._fetch_and_save_analytics(media.pk, video_filename)
+                    except Exception as e:
+                        print(f"⚠️ Analytics fetch failed: {e}")
+                
                 return True, f"✅ Video uploaded successfully!\n{video_filename}"
             else:
                 return False, "Upload failed - Unknown error"
@@ -124,6 +149,65 @@ class InstagramManager:
             return False, "⚠️ Rate limit! Instagram ne block kiya. 1-2 ghante wait karo."
         except Exception as e:
             return False, f"❌ Error: {str(e)}"
+    
+    def _fetch_and_save_analytics(self, media_id, video_filename):
+        """Post ka analytics fetch karke save karo"""
+        try:
+            media_info = self.client.media_info(media_id)
+            
+            likes = media_info.like_count or 0
+            comments = media_info.comment_count or 0
+            views = media_info.view_count or 0
+            
+            self.analytics.save_post_analytics(
+                str(media_id),
+                self.current_username,
+                video_filename,
+                likes,
+                comments,
+                views
+            )
+            
+            print(f"📊 Analytics saved: {likes} likes, {comments} comments, {views} views")
+        except Exception as e:
+            print(f"Analytics error: {e}")
+    
+    def update_account_analytics(self):
+        """Account ka growth analytics update karo"""
+        try:
+            user_info = self.client.user_info_by_username(self.current_username)
+            
+            self.analytics.save_account_growth(
+                self.current_username,
+                user_info.follower_count,
+                user_info.following_count,
+                user_info.media_count
+            )
+            
+            print(f"📈 Account analytics updated: {user_info.follower_count} followers")
+            return True
+        except Exception as e:
+            print(f"Account analytics error: {e}")
+            return False
+    
+    def get_analytics_summary(self, days=7):
+        """Analytics summary get karo"""
+        if not self.current_username:
+            return None
+        
+        try:
+            engagement = self.analytics.get_total_engagement(self.current_username, days)
+            best_posts = self.analytics.get_best_performing_posts(self.current_username, 5)
+            best_times = self.analytics.analyze_best_posting_time(self.current_username)
+            
+            return {
+                'engagement': engagement,
+                'best_posts': best_posts,
+                'best_times': best_times
+            }
+        except Exception as e:
+            print(f"Analytics summary error: {e}")
+            return None
     
     def upload_folder_videos(self, folder_path, callback=None):
         """Folder ke saare videos upload karo with delays"""
@@ -208,6 +292,37 @@ class InstagramManager:
             }
         except Exception as e:
             print(f"Error getting account info: {e}")
+            return None
+    
+    def get_competitor_info(self, competitor_username):
+        """Competitor ka basic info fetch karo"""
+        if not self.client:
+            return None
+        
+        try:
+            user_info = self.client.user_info_by_username(competitor_username)
+            
+            # Recent posts ki info
+            medias = self.client.user_medias(user_info.pk, amount=5)
+            
+            recent_posts = []
+            for media in medias:
+                recent_posts.append({
+                    'likes': media.like_count,
+                    'comments': media.comment_count,
+                    'views': media.view_count if hasattr(media, 'view_count') else 0,
+                    'caption': media.caption_text[:100] if media.caption_text else ""
+                })
+            
+            return {
+                'username': user_info.username,
+                'followers': user_info.follower_count,
+                'following': user_info.following_count,
+                'posts': user_info.media_count,
+                'recent_posts': recent_posts
+            }
+        except Exception as e:
+            print(f"Competitor info error: {e}")
             return None
     
     def logout(self):

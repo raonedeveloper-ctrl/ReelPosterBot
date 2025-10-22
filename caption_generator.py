@@ -1,59 +1,107 @@
 import os
-from config import USE_AI_CAPTIONS, OPENAI_API_KEY, DEFAULT_CAPTION_TEMPLATE
+import random
+from config import (
+    CAPTIONS_FILE, 
+    TRENDING_HASHTAGS, 
+    MAX_HASHTAGS_PER_POST,
+    INSTAGRAM_USERNAME
+)
 
 class CaptionGenerator:
     def __init__(self):
-        self.use_ai = USE_AI_CAPTIONS
-        self.api_key = OPENAI_API_KEY
+        self.captions = self._load_captions()
+        self.used_captions = set()
     
-    def generate_caption(self, video_filename, custom_keywords=""):
-        """Caption generate karo - AI ya template se"""
+    def _load_captions(self):
+        """TXT file se captions load karo"""
+        if not os.path.exists(CAPTIONS_FILE):
+            return []
         
-        if self.use_ai and self.api_key:
-            return self._generate_ai_caption(video_filename, custom_keywords)
-        else:
-            return self._generate_template_caption(video_filename, custom_keywords)
-    
-    def _generate_ai_caption(self, video_filename, custom_keywords):
-        """OpenAI se caption generate karo (optional)"""
         try:
-            import openai
-            openai.api_key = self.api_key
+            with open(CAPTIONS_FILE, 'r', encoding='utf-8') as f:
+                content = f.read()
             
-            prompt = f"""
-            Generate an engaging Instagram caption for a video named: {video_filename}
-            Keywords: {custom_keywords}
-            
-            Requirements:
-            - Keep it under 150 characters
-            - Add 5-10 relevant hashtags
-            - Make it engaging and trendy
-            - Use emojis appropriately
-            """
-            
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are an Instagram caption expert."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=150
-            )
-            
-            caption = response.choices[0].message.content.strip()
-            return caption
-            
+            # --- se split karke captions list banao
+            captions = [c.strip() for c in content.split('---') if c.strip()]
+            return captions
         except Exception as e:
-            print(f"AI caption generation failed: {e}")
-            return self._generate_template_caption(video_filename, custom_keywords)
+            print(f"❌ Error loading captions: {e}")
+            return []
     
-    def _generate_template_caption(self, video_filename, custom_keywords=""):
-        """Simple template se caption generate karo"""
-        video_name = os.path.splitext(video_filename)[0].replace('_', ' ').title()
+    def generate_caption(self, video_filename="", custom_keywords=""):
+        """Caption + trending hashtags generate karo"""
         
-        caption = DEFAULT_CAPTION_TEMPLATE.format(video_name=video_name)
+        # Random caption select karo (jo already use nahi hua)
+        available_captions = [c for c in self.captions if c not in self.used_captions]
         
-        if custom_keywords:
-            caption += f"\n{custom_keywords}"
+        # Agar sab captions use ho gaye, reset karo
+        if not available_captions:
+            self.used_captions.clear()
+            available_captions = self.captions
         
-        return caption
+        if not available_captions:
+            # Fallback agar file empty hai
+            caption_text = f"💸 Rich Mindset 🔥\nFollow {INSTAGRAM_USERNAME} for daily motivation! 🚀"
+        else:
+            caption_text = random.choice(available_captions)
+            self.used_captions.add(caption_text)
+        
+        # Trending hashtags add karo
+        hashtags = self._generate_trending_hashtags(caption_text, custom_keywords)
+        
+        # Final caption
+        final_caption = f"""{caption_text}
+
+👉 Follow {INSTAGRAM_USERNAME} for more! 🚀
+
+{hashtags}"""
+        
+        return final_caption
+    
+    def _generate_trending_hashtags(self, caption_text, custom_keywords):
+        """Caption ke context se related trending hashtags"""
+        
+        # Caption me keywords detect karo
+        caption_lower = caption_text.lower()
+        
+        # Priority hashtags (caption me agar yeh words hai)
+        priority_tags = []
+        
+        keyword_map = {
+            'money': ['money', 'millionaire', 'financialfreedom', 'wealth'],
+            'business': ['business', 'entrepreneur', 'hustle', 'success'],
+            'luxury': ['luxury', 'rich', 'lifestyle', 'millionaire'],
+            'investment': ['investment', 'investing', 'wealth', 'financialfreedom'],
+            'mindset': ['mindset', 'motivation', 'success', 'entrepreneur']
+        }
+        
+        # Caption ke keywords se related tags find karo
+        for keyword, tags in keyword_map.items():
+            if keyword in caption_lower:
+                priority_tags.extend(tags[:3])
+        
+        # Priority tags + random trending tags
+        selected_tags = list(set(priority_tags))  # Duplicates remove
+        
+        # Remaining slots fill karo
+        remaining = MAX_HASHTAGS_PER_POST - len(selected_tags)
+        if remaining > 0:
+            random_tags = random.sample(
+                [t for t in TRENDING_HASHTAGS if t not in selected_tags],
+                min(remaining, len(TRENDING_HASHTAGS))
+            )
+            selected_tags.extend(random_tags)
+        
+        # Limit to MAX_HASHTAGS
+        selected_tags = selected_tags[:MAX_HASHTAGS_PER_POST]
+        
+        # Format hashtags
+        hashtags = ' '.join([f'#{tag}' for tag in selected_tags])
+        
+        return hashtags
+    
+    def reload_captions(self):
+        """Captions file reload karo (agar update kiya ho)"""
+        self.captions = self._load_captions()
+        self.used_captions.clear()
+        return len(self.captions)
