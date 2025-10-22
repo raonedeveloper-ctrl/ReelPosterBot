@@ -248,26 +248,84 @@ class InstagramManager:
             return False
     
     def get_performance_dashboard(self, days=7):
-        """Get comprehensive performance data"""
+        """Get comprehensive performance data with safe error handling"""
         try:
+            # Try to get dashboard data
             dashboard = self.analytics.get_dashboard_data(self.current_username, days)
             
-            # Add shadow ban check
-            shadow_ban = self.analytics.check_shadow_ban(self.current_username)
-            dashboard['shadow_ban'] = shadow_ban
+            # If no data, return empty structure
+            if not dashboard:
+                dashboard = {
+                    'total_posts': 0,
+                    'total_likes': 0,
+                    'total_comments': 0,
+                    'total_views': 0,
+                    'avg_engagement': 0,
+                    'avg_viral_score': 0,
+                    'best_post': {
+                        'filename': 'No posts yet',
+                        'engagement': 0,
+                        'viral_score': 0
+                    }
+                }
             
-            # Add best times
-            best_times = self.analytics.predict_best_posting_times(self.current_username)
-            dashboard['recommended_times'] = best_times
+            # Add shadow ban check (with error handling)
+            try:
+                shadow_ban = self.analytics.check_shadow_ban(self.current_username)
+                dashboard['shadow_ban'] = shadow_ban
+            except Exception as e:
+                print(f"Shadow ban check error: {e}")
+                dashboard['shadow_ban'] = {
+                    'is_shadow_banned': False,
+                    'drop_percentage': 0,
+                    'avg_reach_last_7': 0,
+                    'avg_reach_previous_7': 0,
+                    'suggestions': 'Not enough data yet'
+                }
             
-            # Add top hashtags
-            top_hashtags = self.analytics.get_best_performing_hashtags(self.current_username, 10)
-            dashboard['top_hashtags'] = top_hashtags
+            # Add best times (with error handling)
+            try:
+                best_times = self.analytics.predict_best_posting_times(self.current_username)
+                dashboard['recommended_times'] = best_times
+            except Exception as e:
+                print(f"Best times prediction error: {e}")
+                dashboard['recommended_times'] = ["10:00", "14:00", "18:00", "21:00"]
+            
+            # Add top hashtags (with error handling)
+            try:
+                top_hashtags = self.analytics.get_best_performing_hashtags(self.current_username, 10)
+                dashboard['top_hashtags'] = top_hashtags if top_hashtags else []
+            except Exception as e:
+                print(f"Hashtags fetch error: {e}")
+                dashboard['top_hashtags'] = []
             
             return dashboard
+            
         except Exception as e:
             print(f"❌ Dashboard error: {e}")
-            return None
+            # Return safe empty structure instead of None
+            return {
+                'total_posts': 0,
+                'total_likes': 0,
+                'total_comments': 0,
+                'total_views': 0,
+                'avg_engagement': 0,
+                'avg_viral_score': 0,
+                'best_post': {
+                    'filename': 'No posts yet',
+                    'engagement': 0,
+                    'viral_score': 0
+                },
+                'shadow_ban': {
+                    'is_shadow_banned': False,
+                    'drop_percentage': 0,
+                    'avg_reach_last_7': 0,
+                    'avg_reach_previous_7': 0,
+                    'suggestions': 'Not enough data'
+                },
+                'recommended_times': ["10:00", "14:00", "18:00", "21:00"],
+                'top_hashtags': []
+            }
     
     def upload_folder_videos(self, folder_path, callback=None):
         """Batch upload with progress tracking"""
