@@ -1,6 +1,9 @@
 # Instagram API Library
 instagrapi==2.1.2
 
+# MoviePy - IMPORTANT: Version 1.0.3 hi use karo (2.x nahi!)
+moviepy==1.0.3
+
 # OpenAI for AI Captions (Optional)
 openai==1.12.0
 
