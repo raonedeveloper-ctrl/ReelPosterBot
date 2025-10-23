@@ -1,5 +1,6 @@
+import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext
+from tkinter import ttk, filedialog, messagebox
 import threading
 import os
 from datetime import datetime, timezone, timedelta
@@ -10,7 +11,8 @@ from video_queue_manager import VideoQueueManager
 from advanced_analytics import AdvancedAnalytics
 from config import VIDEO_FOLDER_PATH, APP_VERSION
 from features.video_preview import VideoPreview
-from ui.modern_theme import ModernTheme
+# from ui.modern_theme import ModernTheme
+from ui.modern_ui import ModernUI
 from core.multi_account_manager import MultiAccountManager
 from features.competitor_tracker import CompetitorTracker
 from features.content_calendar import ContentCalendar
@@ -20,14 +22,18 @@ from features.advanced_dashboard import AdvancedDashboard
 from features.backup_manager import BackupManager
 from features.settings_manager import SettingsManager
 
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
 class InstagramBotPro:
     """Professional Instagram Automation Dashboard"""
     
-    def __init__(self, root):
-        self.root = root
+    def __init__(self):
+        self.root = ctk.CTk()
         self.root.title(f"Instagram Auto Poster PRO v{APP_VERSION} 🚀")
-        self.root.geometry("1200x800")
+        self.root.geometry("1300x850")
         self.root.resizable(True, True)
+        self.root.configure(fg_color=ModernUI.COLORS['bg_dark'])
         
         # Core managers
         self.insta_manager = InstagramManager()
@@ -53,24 +59,27 @@ class InstagramBotPro:
         self.create_main_layout()
         
     def setup_styles(self):
-        """Professional styling"""
+        """Configure theme and color palette"""
         try:
             preferred_theme = self.settings_manager.settings.get('theme', 'dark') if self.settings_manager else 'dark'
-            self.theme_style, self.colors = ModernTheme.apply_theme(self.root, preferred_theme)
+            self.theme_style, _ = ModernTheme.apply_theme(self.root, preferred_theme)
         except Exception:
             style = ttk.Style()
             style.theme_use('clam')
             self.theme_style = style
-            self.colors = {
-                'primary': '#E1306C',
-                'secondary': '#4CAF50',
-                'success': '#4CAF50',
-                'warning': '#FF9800',
-                'danger': '#f44336',
-                'info': '#2196F3',
-                'dark': '#2c3e50',
-                'light': '#ecf0f1'
-            }
+        
+        self.colors = {
+            'primary': '#E1306C',
+            'success': '#4CAF50',
+            'warning': '#FF9800',
+            'danger': '#f44336',
+            'bg': '#1a1a1a',
+            'secondary': ModernUI.COLORS['secondary'],
+            'accent': ModernUI.COLORS['accent'],
+            'info': ModernUI.COLORS['info'],
+            'light': ModernUI.COLORS['bg_light'],
+            'text': ModernUI.COLORS['text_light']
+        }
     
     def create_menu(self):
         """Professional menu bar"""
@@ -153,291 +162,303 @@ class InstagramBotPro:
         """Professional multi-panel layout"""
         
         # ========== HEADER ==========
-        header_frame = tk.Frame(self.root, bg=self.colors['primary'], height=70)
-        header_frame.pack(fill=tk.X)
-        header_frame.pack_propagate(False)
-        
-        title_label = tk.Label(
-            header_frame,
-            text=f"Instagram Auto Poster PRO v{APP_VERSION}",
-            font=("Arial", 22, "bold"),
-            bg=self.colors['primary'],
-            fg="white"
+        header = ModernUI.create_header(
+            self.root,
+            f"🚀 Instagram Auto Poster PRO v{APP_VERSION}",
+            "AI-powered automation dashboard"
         )
-        title_label.pack(side=tk.LEFT, padx=20, pady=15)
         
-        # Header buttons
-        btn_frame = tk.Frame(header_frame, bg=self.colors['primary'])
-        btn_frame.pack(side=tk.RIGHT, padx=20)
+        header_content = ctk.CTkFrame(header, fg_color="transparent")
+        header_content.pack(fill=tk.X, padx=30, pady=(5, 15))
         
-        tk.Button(
+        logo_label = ctk.CTkLabel(
+            header_content,
+            text="📱",
+            font=("Arial", 36),
+            text_color=ModernUI.COLORS['text_light']
+        )
+        logo_label.pack(side=tk.LEFT, padx=(0, 15))
+        
+        tagline = ctk.CTkLabel(
+            header_content,
+            text="Automate • Analyze • Grow",
+            font=("Arial", 14, "bold"),
+            text_color=ModernUI.COLORS['text_dark']
+        )
+        tagline.pack(side=tk.LEFT, padx=5)
+        
+        btn_frame = ctk.CTkFrame(header_content, fg_color="transparent")
+        btn_frame.pack(side=tk.RIGHT)
+        
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="🚀 Start Auto-Post",
-            font=("Arial", 10, "bold"),
-            bg="#4CAF50",
-            fg="white",
-            command=self.start_auto_posting,
-            padx=15,
-            pady=8
-        ).pack(side=tk.LEFT, padx=5)
+            "Start Auto-Post",
+            self.start_auto_posting,
+            icon="🚀"
+        ).pack(side=tk.LEFT, padx=20, pady=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="📊 Dashboard",
-            font=("Arial", 10, "bold"),
-            bg="#2196F3",
-            fg="white",
-            command=self.show_dashboard,
-            padx=15,
-            pady=8
-        ).pack(side=tk.LEFT, padx=5)
+            "Dashboard",
+            self.show_dashboard,
+            icon="📊"
+        ).pack(side=tk.LEFT, padx=20, pady=10)
         
         # ========== MAIN CONTAINER ==========
-        main_container = tk.Frame(self.root)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        main_container = ctk.CTkFrame(self.root, fg_color="transparent")
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # Left Panel (Status & Controls)
-        left_panel = tk.Frame(main_container, width=400)
-        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))
+        left_panel = ctk.CTkFrame(main_container, fg_color=ModernUI.COLORS['bg_light'], corner_radius=16)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 20), pady=5)
         
         self.create_status_panel(left_panel)
         self.create_controls_panel(left_panel)
         
-        # Right Panel (Logs & Queue)
-        right_panel = tk.Frame(main_container)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+        # Right Panel (Logs & Stats)
+        right_panel = ctk.CTkFrame(main_container, fg_color="transparent")
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, pady=5)
         
-        self.create_logs_panel(right_panel)
+        self.create_activity_log_panel(right_panel)
         self.create_quick_stats_panel(right_panel)
         
         # ========== STATUS BAR ==========
-        self.status_bar = tk.Label(
+        self.status_bar = ctk.CTkLabel(
             self.root,
             text="Ready | Not logged in",
-            bd=1,
-            relief=tk.SUNKEN,
-            anchor=tk.W,
-            font=("Arial", 9)
+            anchor="w",
+            font=("Arial", 12, "bold"),
+            text_color=ModernUI.COLORS['text_light'],
+            fg_color=self.colors['bg'],
+            height=36
         )
-        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=20, pady=(0, 12))
         
         # Initial log
         self.log("✅ Bot initialized successfully")
         self.log(f"📁 Default folder: {self.current_folder}")
         self.log("👉 Login to get started!")
     
+    def run(self):
+        """Start the application loop"""
+        self.root.mainloop()
+    
     def create_status_panel(self, parent):
         """Status information panel"""
-        status_frame = tk.LabelFrame(
-            parent,
-            text="📊 Current Status",
-            font=("Arial", 12, "bold"),
-            padx=10,
-            pady=10
-        )
-        status_frame.pack(fill=tk.X, pady=(0, 10))
+        status_frame = ctk.CTkFrame(parent, fg_color=ModernUI.COLORS['bg_light'], corner_radius=18)
+        status_frame.pack(fill=tk.X, pady=(0, 20), padx=20)
         
-        # Account status
-        self.account_status = tk.Label(
+        title = ctk.CTkLabel(
+            status_frame,
+            text="📊 Current Status",
+            font=("Arial", 16, "bold"),
+            text_color=self.colors['text']
+        )
+        title.pack(anchor="w", padx=20, pady=(20, 10))
+        
+        self.account_status = ctk.CTkLabel(
             status_frame,
             text="❌ Not Logged In",
-            font=("Arial", 11, "bold"),
-            fg="red"
+            font=("Arial", 14, "bold"),
+            text_color=self.colors['danger']
         )
-        self.account_status.pack(pady=5)
+        self.account_status.pack(anchor="w", padx=20, pady=5)
         
-        # Folder status
-        self.folder_status = tk.Label(
+        self.folder_status = ctk.CTkLabel(
             status_frame,
             text=f"📁 Folder: {os.path.basename(self.current_folder)}",
-            font=("Arial", 9)
+            font=("Arial", 12),
+            text_color=ModernUI.COLORS['text_dark']
         )
-        self.folder_status.pack(pady=3)
+        self.folder_status.pack(anchor="w", padx=20, pady=5)
         
-        # Scheduler status
-        self.scheduler_status = tk.Label(
+        self.scheduler_status = ctk.CTkLabel(
             status_frame,
             text="⏰ Auto-Poster: OFF",
-            font=("Arial", 9),
-            fg="red"
+            font=("Arial", 12),
+            text_color=self.colors['danger']
         )
-        self.scheduler_status.pack(pady=3)
+        self.scheduler_status.pack(anchor="w", padx=20, pady=5)
         
-        # Queue status
-        self.queue_status = tk.Label(
+        self.queue_status = ctk.CTkLabel(
             status_frame,
             text="📦 Queue: 0 videos",
-            font=("Arial", 9)
+            font=("Arial", 12),
+            text_color=ModernUI.COLORS['text_dark']
         )
-        self.queue_status.pack(pady=3)
+        self.queue_status.pack(anchor="w", padx=20, pady=5)
         
-        # Today's posts
-        self.posts_today = tk.Label(
+        self.posts_today = ctk.CTkLabel(
             status_frame,
             text="📤 Posts Today: 0/4",
-            font=("Arial", 9)
+            font=("Arial", 12),
+            text_color=ModernUI.COLORS['text_dark']
         )
-        self.posts_today.pack(pady=3)
+        self.posts_today.pack(anchor="w", padx=20, pady=(5, 20))
     
     def create_controls_panel(self, parent):
         """Quick action controls"""
-        controls_frame = tk.LabelFrame(
-            parent,
-            text="⚡ Quick Actions",
-            font=("Arial", 12, "bold"),
-            padx=15,
-            pady=15
-        )
-        controls_frame.pack(fill=tk.BOTH, expand=True)
+        controls_frame = ctk.CTkFrame(parent, fg_color=ModernUI.COLORS['bg_light'], corner_radius=18)
+        controls_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
-        # Control buttons with icons
+        title = ctk.CTkLabel(
+            controls_frame,
+            text="⚡ Quick Actions",
+            font=("Arial", 16, "bold"),
+            text_color=self.colors['text']
+        )
+        title.pack(anchor="w", padx=20, pady=(20, 10))
+        
+        grid = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        grid.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 20))
+        
         buttons = [
-            ("🔑 Login", self.login_dialog, "#4CAF50"),
-            ("📂 Select Folder", self.select_folder, "#2196F3"),
-            ("📤 Upload Single", self.upload_single_video, "#FF9800"),
-            ("📦 Upload All", self.upload_all_videos, "#E91E63"),
-            ("🎬 Manage Queue", self.show_queue_window, "#9C27B0"),
-            ("⏰ Start Auto-Post", self.start_auto_posting, "#4CAF50"),
-            ("⏹️ Stop Auto-Post", self.stop_auto_posting, "#f44336"),
-            ("📊 Analytics", self.show_dashboard, "#00BCD4"),
-            ("🔍 Shadow Ban", self.check_shadow_ban, "#FF5722"),
+            ("Login", self.login_dialog, "🔑"),
+            ("Select Folder", self.select_folder, "📂"),
+            ("Upload Single", self.upload_single_video, "📤"),
+            ("Upload All", self.upload_all_videos, "📦"),
+            ("Manage Queue", self.show_queue_window, "🎬"),
+            ("Start Auto-Post", self.start_auto_posting, "⏰"),
+            ("Stop Auto-Post", self.stop_auto_posting, "⏹️"),
+            ("Analytics", self.show_dashboard, "📊"),
+            ("Shadow Ban", self.check_shadow_ban, "🔍"),
         ]
         
-        for idx, (text, command, color) in enumerate(buttons):
+        for idx, (text, command, icon) in enumerate(buttons):
             row = idx // 2
             col = idx % 2
             
-            btn = tk.Button(
-                controls_frame,
-                text=text,
-                font=("Arial", 10, "bold"),
-                bg=color,
-                fg="white",
-                command=command,
-                width=18,
-                height=2
-            )
-            btn.grid(row=row, column=col, padx=5, pady=5, sticky="ew")
+            button = ModernUI.create_gradient_button(grid, text, command, icon=icon)
+            button.grid(row=row, column=col, padx=20, pady=10, sticky="ew")
         
-        controls_frame.grid_columnconfigure(0, weight=1)
-        controls_frame.grid_columnconfigure(1, weight=1)
+        grid.grid_columnconfigure(0, weight=1)
+        grid.grid_columnconfigure(1, weight=1)
 
+    
+    def create_activity_log_panel(self, parent):
+        """Wrapper to maintain compatibility with legacy naming"""
+        self.create_logs_panel(parent)
     
     def create_logs_panel(self, parent):
         """Activity logs panel"""
-        logs_frame = tk.LabelFrame(
-            parent,
-            text="📜 Activity Log",
-            font=("Arial", 12, "bold"),
-            padx=10,
-            pady=10
-        )
-        logs_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        logs_frame = ctk.CTkFrame(parent, fg_color=ModernUI.COLORS['bg_light'], corner_radius=18)
+        logs_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
-        # Log text area with scrollbar
-        self.log_text = scrolledtext.ScrolledText(
+        title = ctk.CTkLabel(
             logs_frame,
-            height=20,
-            font=("Consolas", 9),
-            bg="#f8f9fa",
-            fg="#2c3e50",
-            wrap=tk.WORD
+            text="📜 Activity Log",
+            font=("Arial", 16, "bold"),
+            text_color=self.colors['text']
         )
-        self.log_text.pack(fill=tk.BOTH, expand=True)
+        title.pack(anchor="w", padx=20, pady=(20, 10))
         
-        # Log controls
-        log_controls = tk.Frame(logs_frame)
-        log_controls.pack(fill=tk.X, pady=(5, 0))
+        self.log_text = ctk.CTkTextbox(
+            logs_frame,
+            height=260,
+            fg_color=self.colors['bg'],
+            text_color=ModernUI.COLORS['text_light'],
+            font=("Consolas", 11)
+        )
+        self.log_text.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 10))
+        self.log_text.configure(wrap="word")
+        self.log_text.tag_config("info", foreground=self.colors['primary'])
+        self.log_text.tag_config("success", foreground=self.colors['success'])
+        self.log_text.tag_config("error", foreground=self.colors['danger'])
         
-        tk.Button(
+        log_controls = ctk.CTkFrame(logs_frame, fg_color="transparent")
+        log_controls.pack(fill=tk.X, padx=20, pady=(0, 20))
+        
+        ModernUI.create_gradient_button(
             log_controls,
-            text="Clear Logs",
-            command=self.clear_logs,
-            font=("Arial", 8)
-        ).pack(side=tk.LEFT, padx=2)
+            "Clear Logs",
+            self.clear_logs,
+            icon="🧹",
+            width=160,
+            height=40
+        ).pack(side=tk.LEFT, padx=10, pady=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             log_controls,
-            text="Export Logs",
-            command=self.export_logs,
-            font=("Arial", 8)
-        ).pack(side=tk.LEFT, padx=2)
+            "Export Logs",
+            self.export_logs,
+            icon="💾",
+            width=160,
+            height=40
+        ).pack(side=tk.LEFT, padx=10, pady=10)
     
     def create_quick_stats_panel(self, parent):
-        """Quick statistics panel with date range selector"""
+        """Quick statistics panel"""
         stats_frame = tk.LabelFrame(
             parent,
-            text="📈 Quick Stats",
+            text="📊 Quick Stats",
             font=("Arial", 12, "bold"),
+            bg=self.colors['bg'],
+            fg="white",
             padx=10,
             pady=10
         )
-        stats_frame.pack(fill=tk.X)
+        stats_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        # Date range selector
-        range_selector_frame = tk.Frame(stats_frame)
-        range_selector_frame.pack(fill=tk.X, pady=(0, 10))
+        # Period selector
+        period_frame = tk.Frame(stats_frame, bg=self.colors['bg'])
+        period_frame.pack(fill=tk.X, pady=5)
         
         tk.Label(
-            range_selector_frame,
+            period_frame,
             text="📅 Period:",
-            font=("Arial", 9, "bold")
+            font=("Arial", 10, "bold"),
+            bg=self.colors['bg'],
+            fg="white"
         ).pack(side=tk.LEFT, padx=5)
         
         self.stats_range = tk.StringVar(value="7 Days")
-        
-        range_dropdown = ttk.Combobox(
-            range_selector_frame,
+        period_combo = ttk.Combobox(
+            period_frame,
             textvariable=self.stats_range,
-            values=["7 Days", "14 Days", "30 Days", "90 Days", "6 Months", "1 Year", "Lifetime"],
+            values=["7 Days", "14 Days", "30 Days", "Lifetime"],
             state="readonly",
-            width=12,
-            font=("Arial", 9)
+            width=12
         )
-        range_dropdown.pack(side=tk.LEFT, padx=5)
-        
-        def on_range_change(event=None):
-            self.refresh_quick_stats()
-        
-        range_dropdown.bind("<<ComboboxSelected>>", on_range_change)
+        period_combo.pack(side=tk.LEFT, padx=5)
+        period_combo.bind("<<ComboboxSelected>>", lambda e: self.refresh_quick_stats())
         
         # Stats grid
-        stats_grid = tk.Frame(stats_frame)
-        stats_grid.pack(fill=tk.X)
+        stats_grid = tk.Frame(stats_frame, bg=self.colors['bg'])
+        stats_grid.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        # Stat boxes
+        # Create stat boxes
         self.stat_boxes = {}
         stats = [
-            ("Total Posts", "0", "📤"),
-            ("Total Likes", "0", "❤️"),
-            ("Avg Engagement", "0%", "📊"),
-            ("Followers", "0", "📈")
+            ("Total Posts", "0", "📤", "#2196F3"),
+            ("Total Likes", "0", "❤️", "#f44336"),
+            ("Avg Engagement", "0%", "📊", "#4CAF50"),
+            ("Followers", "0", "📈", "#FF9800")
         ]
         
-        for idx, (label, value, icon) in enumerate(stats):
-            box = tk.Frame(stats_grid, relief=tk.RAISED, borderwidth=1)
-            box.grid(row=idx//2, column=idx%2, padx=5, pady=5, sticky="ew")
+        for idx, (label, value, icon, color) in enumerate(stats):
+            box = tk.Frame(
+                stats_grid,
+                relief=tk.RAISED,
+                borderwidth=2,
+                bg=color,
+                padx=10,
+                pady=10
+            )
+            box.grid(row=idx//2, column=idx%2, padx=5, pady=5, sticky="nsew")
             
-            tk.Label(
-                box,
-                text=icon,
-                font=("Arial", 20)
-            ).pack()
+            tk.Label(box, text=icon, font=("Arial", 24), bg=color, fg="white").pack()
             
             value_label = tk.Label(
                 box,
                 text=value,
-                font=("Arial", 14, "bold")
+                font=("Arial", 16, "bold"),
+                bg=color,
+                fg="white"
             )
             value_label.pack()
-            
-            tk.Label(
-                box,
-                text=label,
-                font=("Arial", 8)
-            ).pack()
-            
             self.stat_boxes[label] = value_label
+            
+            tk.Label(box, text=label, font=("Arial", 9), bg=color, fg="white").pack()
         
         stats_grid.grid_columnconfigure(0, weight=1)
         stats_grid.grid_columnconfigure(1, weight=1)
@@ -447,21 +468,32 @@ class InstagramBotPro:
             stats_frame,
             text="🔄 Refresh Stats",
             command=self.refresh_quick_stats,
-            font=("Arial", 9)
-        ).pack(pady=(10, 0))
+            bg="#00BCD4",
+            fg="white",
+            font=("Arial", 10, "bold"),
+            relief=tk.FLAT
+        ).pack(pady=10)
     
     def log(self, message):
         """Add timestamped log message"""
         timestamp = datetime.now().strftime("%H:%M:%S")
         formatted_msg = f"[{timestamp}] {message}\n"
-        self.log_text.insert(tk.END, formatted_msg)
-        self.log_text.see(tk.END)
-        self.root.update()
+        
+        tag = "info"
+        lower_msg = message.lower()
+        if "✅" in message or "success" in lower_msg:
+            tag = "success"
+        elif "❌" in message or "error" in lower_msg or "⚠️" in message:
+            tag = "error"
+        
+        self.log_text.insert("end", formatted_msg, tag)
+        self.log_text.see("end")
+        self.root.update_idletasks()
     
     def update_status_bar(self, message):
         """Update bottom status bar"""
         self.status_bar.config(text=message)
-        self.root.update()
+        self.root.update_idletasks()
     
     def _initialize_account_features(self):
         """Initialize modules that rely on an authenticated client"""
@@ -482,26 +514,29 @@ class InstagramBotPro:
     
     def add_account_dialog(self):
         """Add new Instagram account"""
-        dialog = tk.Toplevel(self.root)
+        dialog = ctk.CTkToplevel(self.root)
         dialog.title("Add New Account")
         dialog.geometry("450x250")
         dialog.resizable(False, False)
+        dialog.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             dialog,
             text="Add Instagram Account",
-            font=("Arial", 14, "bold")
-        ).pack(pady=15)
+            font=("Arial", 18, "bold"),
+            text_color=self.colors['text']
+        ).pack(pady=20)
         
-        # Username
-        tk.Label(dialog, text="Username:", font=("Arial", 11)).pack(pady=(10, 0))
-        username_entry = tk.Entry(dialog, font=("Arial", 11), width=30)
-        username_entry.pack(pady=5)
+        form = ctk.CTkFrame(dialog, fg_color="transparent")
+        form.pack(fill=tk.BOTH, expand=True, padx=20)
         
-        # Password
-        tk.Label(dialog, text="Password:", font=("Arial", 11)).pack(pady=(10, 0))
-        password_entry = tk.Entry(dialog, font=("Arial", 11), width=30, show="●")
-        password_entry.pack(pady=5)
+        ctk.CTkLabel(form, text="Username", font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 5))
+        username_entry = ctk.CTkEntry(form, width=320, font=("Arial", 12))
+        username_entry.pack(pady=(0, 15))
+        
+        ctk.CTkLabel(form, text="Password", font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 5))
+        password_entry = ctk.CTkEntry(form, width=320, font=("Arial", 12), show="●")
+        password_entry.pack(pady=(0, 15))
         
         def save_account():
             username = username_entry.get().strip()
@@ -531,16 +566,14 @@ class InstagramBotPro:
                 self.log(f"❌ Login failed: {message}")
                 messagebox.showerror("Login Failed", message)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             dialog,
-            text="Add & Login",
-            font=("Arial", 12, "bold"),
-            bg=self.colors['success'],
-            fg="white",
-            command=save_account,
-            width=20,
-            height=2
-        ).pack(pady=20)
+            "Add & Login",
+            save_account,
+            icon="➕",
+            width=220,
+            height=48
+        ).pack(pady=(0, 25))
     
     def login_dialog(self):
         """Login to existing account"""
@@ -551,14 +584,16 @@ class InstagramBotPro:
             self.add_account_dialog()
             return
         
-        dialog = tk.Toplevel(self.root)
+        dialog = ctk.CTkToplevel(self.root)
         dialog.title("Login to Account")
         dialog.geometry("350x200")
+        dialog.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             dialog,
             text="Select Account",
-            font=("Arial", 13, "bold")
+            font=("Arial", 16, "bold"),
+            text_color=self.colors['text']
         ).pack(pady=15)
         
         account_var = tk.StringVar()
@@ -604,16 +639,14 @@ class InstagramBotPro:
                 self.log(f"❌ {message}")
                 messagebox.showerror("Login Failed", message)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             dialog,
-            text="Login",
-            font=("Arial", 11, "bold"),
-            bg=self.colors['success'],
-            fg="white",
-            command=do_login,
-            width=15,
-            height=2
-        ).pack(pady=15)
+            "Login",
+            do_login,
+            icon="🔑",
+            width=200,
+            height=48
+        ).pack(pady=20)
     
     def view_accounts(self):
         """View all saved accounts"""
@@ -637,14 +670,16 @@ class InstagramBotPro:
             messagebox.showinfo("No Accounts", "No accounts to delete!")
             return
         
-        dialog = tk.Toplevel(self.root)
+        dialog = ctk.CTkToplevel(self.root)
         dialog.title("Delete Account")
         dialog.geometry("350x180")
+        dialog.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             dialog,
             text="Select Account to Delete",
-            font=("Arial", 12, "bold")
+            font=("Arial", 15, "bold"),
+            text_color=self.colors['text']
         ).pack(pady=15)
         
         account_var = tk.StringVar()
@@ -675,15 +710,14 @@ class InstagramBotPro:
                 messagebox.showinfo("Success", "Account deleted successfully!")
                 dialog.destroy()
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             dialog,
-            text="Delete",
-            font=("Arial", 11, "bold"),
-            bg=self.colors['danger'],
-            fg="white",
-            command=do_delete,
-            width=15
-        ).pack(pady=10)
+            "Delete Account",
+            do_delete,
+            icon="🗑️",
+            width=200,
+            height=44
+        ).pack(pady=20)
     
     # ==================== FOLDER MANAGEMENT ====================
     
@@ -802,14 +836,16 @@ class InstagramBotPro:
             messagebox.showinfo("Upload History", "No uploads yet!")
             return
         
-        history_window = tk.Toplevel(self.root)
+        history_window = ctk.CTkToplevel(self.root)
         history_window.title("Upload History")
         history_window.geometry("600x400")
+        history_window.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             history_window,
             text="Recent Uploads",
-            font=("Arial", 14, "bold")
+            font=("Arial", 18, "bold"),
+            text_color=self.colors['text']
         ).pack(pady=10)
         
         # Create listbox
@@ -827,29 +863,32 @@ class InstagramBotPro:
     
     def show_queue_window(self):
         """Show queue management window"""
-        queue_window = tk.Toplevel(self.root)
+        queue_window = ctk.CTkToplevel(self.root)
         queue_window.title("Video Queue Manager")
         queue_window.geometry("700x500")
+        queue_window.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             queue_window,
             text="📦 Video Queue",
-            font=("Arial", 16, "bold")
+            font=("Arial", 18, "bold"),
+            text_color=self.colors['text']
         ).pack(pady=10)
         
         # Queue status
         status = self.queue_manager.get_queue_status()
         status_text = f"Queued: {status['total_queued']} | History: {status['total_history']} | Status: {'⏸️ Paused' if status['is_paused'] else '▶️ Active'}"
         
-        tk.Label(
+        ctk.CTkLabel(
             queue_window,
             text=status_text,
-            font=("Arial", 10)
+            font=("Arial", 12),
+            text_color=ModernUI.COLORS['text_dark']
         ).pack(pady=5)
         
         # Queue list
-        list_frame = tk.Frame(queue_window)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        list_frame = ctk.CTkFrame(queue_window, fg_color=self.colors['bg'], corner_radius=12)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
         
         scrollbar = tk.Scrollbar(list_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -871,38 +910,53 @@ class InstagramBotPro:
             )
         
         # Control buttons
-        btn_frame = tk.Frame(queue_window)
-        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        btn_frame = ctk.CTkFrame(queue_window, fg_color="transparent")
+        btn_frame.pack(fill=tk.X, padx=15, pady=(0, 15))
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="➕ Add Video",
-            command=self.add_to_queue
-        ).pack(side=tk.LEFT, padx=5)
+            "Add Video",
+            self.add_to_queue,
+            icon="➕",
+            width=150,
+            height=42
+        ).pack(side=tk.LEFT, padx=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="🗑️ Clear Queue",
-            command=self.clear_queue
-        ).pack(side=tk.LEFT, padx=5)
+            "Clear Queue",
+            self.clear_queue,
+            icon="🗑️",
+            width=150,
+            height=42
+        ).pack(side=tk.LEFT, padx=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="⏸️ Pause",
-            command=self.pause_queue
-        ).pack(side=tk.LEFT, padx=5)
+            "Pause",
+            self.pause_queue,
+            icon="⏸️",
+            width=140,
+            height=42
+        ).pack(side=tk.LEFT, padx=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="▶️ Resume",
-            command=self.resume_queue
-        ).pack(side=tk.LEFT, padx=5)
+            "Resume",
+            self.resume_queue,
+            icon="▶️",
+            width=140,
+            height=42
+        ).pack(side=tk.LEFT, padx=10)
         
-        tk.Button(
+        ModernUI.create_gradient_button(
             btn_frame,
-            text="🔄 Refresh",
-            command=lambda: self.refresh_queue_display(queue_listbox)
-        ).pack(side=tk.LEFT, padx=5)
+            "Refresh",
+            lambda: self.refresh_queue_display(queue_listbox),
+            icon="🔄",
+            width=140,
+            height=42
+        ).pack(side=tk.LEFT, padx=10)
     
     def add_to_queue(self):
         """Add video to queue"""
@@ -1280,14 +1334,16 @@ These times are optimized for maximum engagement!
             messagebox.showinfo("Info", "Please login first!")
             return
         
-        window = tk.Toplevel(self.root)
+        window = ctk.CTkToplevel(self.root)
         window.title("Hashtag Performance")
         window.geometry("700x500")
+        window.configure(fg_color=ModernUI.COLORS['bg_light'])
         
-        tk.Label(
+        ctk.CTkLabel(
             window,
             text="🏷️ Hashtag Performance Analytics",
-            font=("Arial", 14, "bold")
+            font=("Arial", 18, "bold"),
+            text_color=self.colors['text']
         ).pack(pady=15)
         
         # Get hashtag data
@@ -1297,11 +1353,11 @@ These times are optimized for maximum engagement!
         )
         
         if not best_hashtags:
-            tk.Label(
+            ctk.CTkLabel(
                 window,
                 text="No hashtag data available yet.\nKeep posting to build analytics!",
-                font=("Arial", 11),
-                fg="gray"
+                font=("Arial", 12),
+                text_color=ModernUI.COLORS['text_dark']
             ).pack(pady=50)
             return
         
@@ -1326,12 +1382,14 @@ These times are optimized for maximum engagement!
         tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         # Export button
-        tk.Button(
+        ModernUI.create_gradient_button(
             window,
-            text="📊 Export to CSV",
-            command=lambda: self.export_hashtag_data(best_hashtags),
-            font=("Arial", 10)
-        ).pack(pady=10)
+            "Export to CSV",
+            lambda: self.export_hashtag_data(best_hashtags),
+            icon="📊",
+            width=200,
+            height=44
+        ).pack(pady=15)
     
     def sync_instagram_posts(self):
         """Sync existing Instagram posts"""
@@ -1803,6 +1861,5 @@ Stay safe and grow your Instagram! 🎯
 # ==================== MAIN EXECUTION ====================
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = InstagramBotPro(root)
-    root.mainloop()
+    app = InstagramBotPro()
+    app.run()
