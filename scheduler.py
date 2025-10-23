@@ -2,7 +2,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import os
 import random
-from instagram_manager import InstagramManager
+from core.instagram_manager import InstagramManager
 from database_manager import DatabaseManager
 from video_queue_manager import VideoQueueManager
 from advanced_analytics import AdvancedAnalytics

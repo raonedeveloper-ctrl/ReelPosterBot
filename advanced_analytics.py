@@ -524,5 +524,44 @@ class AdvancedAnalytics:
             }
         }
 
+    def get_lifetime_stats(self, username):
+        """Get all-time statistics"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # All-time stats
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_posts,
+                SUM(likes) as total_likes,
+                SUM(comments) as total_comments,
+                SUM(views) as total_views,
+                SUM(shares) as total_shares,
+                SUM(saves) as total_saves,
+                AVG(engagement_rate) as avg_engagement,
+                MAX(engagement_rate) as best_engagement,
+                MIN(upload_date) as first_post_date
+            FROM post_analytics
+            WHERE username = ?
+        ''', (username,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0]:
+            return {
+                'total_posts': result[0],
+                'total_likes': result[1] or 0,
+                'total_comments': result[2] or 0,
+                'total_views': result[3] or 0,
+                'total_shares': result[4] or 0,
+                'total_saves': result[5] or 0,
+                'avg_engagement': round(result[6] or 0, 2),
+                'best_engagement': round(result[7] or 0, 2),
+                'first_post_date': result[8]
+            }
+        
+        return None
+
 # Initialize on import
 print("✅ Advanced Analytics Engine loaded")
