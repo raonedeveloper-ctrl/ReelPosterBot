@@ -2,13 +2,23 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
 import os
-from datetime import datetime
-from instagram_manager import InstagramManager
+from datetime import datetime, timezone, timedelta
+from core.instagram_manager import InstagramManager
 from database_manager import DatabaseManager
 from scheduler import AutoPoster
 from video_queue_manager import VideoQueueManager
 from advanced_analytics import AdvancedAnalytics
 from config import VIDEO_FOLDER_PATH, APP_VERSION
+from features.video_preview import VideoPreview
+from ui.modern_theme import ModernTheme
+from core.multi_account_manager import MultiAccountManager
+from features.competitor_tracker import CompetitorTracker
+from features.content_calendar import ContentCalendar
+from features.ai_advisor import AIContentAdvisor
+from features.engagement_automator import EngagementAutomator
+from features.advanced_dashboard import AdvancedDashboard
+from features.backup_manager import BackupManager
+from features.settings_manager import SettingsManager
 
 class InstagramBotPro:
     """Professional Instagram Automation Dashboard"""
@@ -24,6 +34,16 @@ class InstagramBotPro:
         self.db = DatabaseManager()
         self.analytics = AdvancedAnalytics()
         self.queue_manager = VideoQueueManager()
+        self.video_preview = VideoPreview()
+        self.multi_account_manager = MultiAccountManager()
+        self.settings_manager = SettingsManager()
+        self.backup_manager = BackupManager()
+        self.ai_advisor = AIContentAdvisor()
+        self.advanced_dashboard = AdvancedDashboard(self.analytics)
+        self.competitor_tracker = None
+        self.engagement_automator = None
+        self.content_calendar = None
+        self.theme_style = None
         self.auto_poster = None
         self.current_folder = VIDEO_FOLDER_PATH
         
@@ -34,20 +54,23 @@ class InstagramBotPro:
         
     def setup_styles(self):
         """Professional styling"""
-        style = ttk.Style()
-        style.theme_use('clam')
-        
-        # Custom colors
-        self.colors = {
-            'primary': '#E1306C',
-            'secondary': '#4CAF50',
-            'success': '#4CAF50',
-            'warning': '#FF9800',
-            'danger': '#f44336',
-            'info': '#2196F3',
-            'dark': '#2c3e50',
-            'light': '#ecf0f1'
-        }
+        try:
+            preferred_theme = self.settings_manager.settings.get('theme', 'dark') if self.settings_manager else 'dark'
+            self.theme_style, self.colors = ModernTheme.apply_theme(self.root, preferred_theme)
+        except Exception:
+            style = ttk.Style()
+            style.theme_use('clam')
+            self.theme_style = style
+            self.colors = {
+                'primary': '#E1306C',
+                'secondary': '#4CAF50',
+                'success': '#4CAF50',
+                'warning': '#FF9800',
+                'danger': '#f44336',
+                'info': '#2196F3',
+                'dark': '#2c3e50',
+                'light': '#ecf0f1'
+            }
     
     def create_menu(self):
         """Professional menu bar"""
@@ -267,15 +290,15 @@ class InstagramBotPro:
         )
         controls_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Control buttons with icons - UPDATED WITH STOP BUTTON
+        # Control buttons with icons
         buttons = [
             ("🔑 Login", self.login_dialog, "#4CAF50"),
             ("📂 Select Folder", self.select_folder, "#2196F3"),
             ("📤 Upload Single", self.upload_single_video, "#FF9800"),
             ("📦 Upload All", self.upload_all_videos, "#E91E63"),
             ("🎬 Manage Queue", self.show_queue_window, "#9C27B0"),
-            ("⏰ Start Auto-Post", self.start_auto_posting, "#4CAF50"),  # Green
-            ("⏹️ Stop Auto-Post", self.stop_auto_posting, "#f44336"),   # Red - NEW!
+            ("⏰ Start Auto-Post", self.start_auto_posting, "#4CAF50"),
+            ("⏹️ Stop Auto-Post", self.stop_auto_posting, "#f44336"),
             ("📊 Analytics", self.show_dashboard, "#00BCD4"),
             ("🔍 Shadow Ban", self.check_shadow_ban, "#FF5722"),
         ]
@@ -341,15 +364,42 @@ class InstagramBotPro:
         ).pack(side=tk.LEFT, padx=2)
     
     def create_quick_stats_panel(self, parent):
-        """Quick statistics panel"""
+        """Quick statistics panel with date range selector"""
         stats_frame = tk.LabelFrame(
             parent,
-            text="📈 Quick Stats (Last 7 Days)",
+            text="📈 Quick Stats",
             font=("Arial", 12, "bold"),
             padx=10,
             pady=10
         )
         stats_frame.pack(fill=tk.X)
+        
+        # Date range selector
+        range_selector_frame = tk.Frame(stats_frame)
+        range_selector_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        tk.Label(
+            range_selector_frame,
+            text="📅 Period:",
+            font=("Arial", 9, "bold")
+        ).pack(side=tk.LEFT, padx=5)
+        
+        self.stats_range = tk.StringVar(value="7 Days")
+        
+        range_dropdown = ttk.Combobox(
+            range_selector_frame,
+            textvariable=self.stats_range,
+            values=["7 Days", "14 Days", "30 Days", "90 Days", "6 Months", "1 Year", "Lifetime"],
+            state="readonly",
+            width=12,
+            font=("Arial", 9)
+        )
+        range_dropdown.pack(side=tk.LEFT, padx=5)
+        
+        def on_range_change(event=None):
+            self.refresh_quick_stats()
+        
+        range_dropdown.bind("<<ComboboxSelected>>", on_range_change)
         
         # Stats grid
         stats_grid = tk.Frame(stats_frame)
@@ -361,7 +411,7 @@ class InstagramBotPro:
             ("Total Posts", "0", "📤"),
             ("Total Likes", "0", "❤️"),
             ("Avg Engagement", "0%", "📊"),
-            ("Followers Growth", "0", "📈")
+            ("Followers", "0", "📈")
         ]
         
         for idx, (label, value, icon) in enumerate(stats):
@@ -412,6 +462,21 @@ class InstagramBotPro:
         """Update bottom status bar"""
         self.status_bar.config(text=message)
         self.root.update()
+    
+    def _initialize_account_features(self):
+        """Initialize modules that rely on an authenticated client"""
+        username = getattr(self.insta_manager, "current_username", None)
+        
+        if username:
+            self.multi_account_manager.accounts[username] = self.insta_manager
+            self.multi_account_manager.current_account = username
+        
+        if self.insta_manager.client:
+            self.competitor_tracker = CompetitorTracker(self.insta_manager.client)
+            self.engagement_automator = EngagementAutomator(self.insta_manager.client)
+        
+        if self.auto_poster:
+            self.content_calendar = ContentCalendar(self.auto_poster)
 
     # ==================== ACCOUNT MANAGEMENT ====================
     
@@ -458,6 +523,7 @@ class InstagramBotPro:
                 )
                 self.log(f"✅ Account added successfully: @{username}")
                 self.update_status_bar(f"Logged in as @{username}")
+                self._initialize_account_features()
                 messagebox.showinfo("Success", message)
                 dialog.destroy()
                 self.refresh_quick_stats()
@@ -531,6 +597,7 @@ class InstagramBotPro:
                 )
                 self.log(f"✅ {message}")
                 self.update_status_bar(f"Logged in as @{username}")
+                self._initialize_account_features()
                 dialog.destroy()
                 self.refresh_quick_stats()
             else:
@@ -655,37 +722,31 @@ class InstagramBotPro:
     # ==================== UPLOAD FUNCTIONS ====================
     
     def upload_single_video(self):
-        """Upload single video"""
+        """Upload single video with preview"""
         if not self.insta_manager.current_username:
             messagebox.showerror("Error", "Please login first!")
             return
         
-        video_file = filedialog.askopenfilename(
+        file_path = filedialog.askopenfilename(
             title="Select Video",
-            filetypes=[
-                ("Video files", "*.mp4 *.mov *.avi"),
-                ("All files", "*.*")
-            ]
+            initialdir=self.current_folder,
+            filetypes=[("Video files", "*.mp4 *.mov *.avi")]
         )
         
-        if not video_file:
-            return
-        
-        self.log(f"📤 Uploading: {os.path.basename(video_file)}")
-        self.update_status_bar("Uploading video...")
+        if file_path:
+            self.video_preview.show_preview(file_path, self._execute_upload)
+    
+    def _execute_upload(self, video_path):
+        """Execute actual upload after preview confirmation"""
+        self.log(f"📤 Uploading: {os.path.basename(video_path)}...")
         
         def upload_thread():
-            success, message = self.insta_manager.upload_video(video_file)
-            
+            success, message = self.insta_manager.upload_video(video_path)
             if success:
                 self.log(f"✅ {message}")
-                messagebox.showinfo("Success", message)
                 self.refresh_quick_stats()
             else:
                 self.log(f"❌ {message}")
-                messagebox.showerror("Upload Failed", message)
-            
-            self.update_status_bar("Ready")
         
         threading.Thread(target=upload_thread, daemon=True).start()
     
@@ -924,6 +985,7 @@ class InstagramBotPro:
             success, message = self.auto_poster.start_scheduler()
             
             if success:
+                self.content_calendar = ContentCalendar(self.auto_poster)
                 self.scheduler_status.config(
                     text="⏰ Auto-Poster: ON",
                     fg="green"
@@ -1034,13 +1096,18 @@ These times are optimized for maximum engagement!
             fg="white"
         ).pack(pady=15)
         
-        # Get dashboard data
+        # Get dashboard data with error handling
         try:
             data = self.insta_manager.get_performance_dashboard(days=7)
             
-            if not data:
-                messagebox.showerror("Error", "Could not load dashboard data!")
-                dashboard.destroy()
+            if not data or data.get('total_posts', 0) == 0:
+                tk.Label(
+                    dashboard,
+                    text="📊 No Data Available\n\nStart posting videos to see analytics!",
+                    font=("Arial", 14),
+                    fg="gray"
+                ).pack(pady=100)
+                self.log("ℹ️ No dashboard data available yet")
                 return
             
             # Scrollable content
@@ -1070,12 +1137,12 @@ These times are optimized for maximum engagement!
             stats_grid.pack()
             
             stats = [
-                ("Total Posts", data['total_posts'], "📤"),
-                ("Total Likes", f"{data['total_likes']:,}", "❤️"),
-                ("Total Comments", data['total_comments'], "💬"),
-                ("Total Views", f"{data['total_views']:,}", "👁️"),
-                ("Avg Engagement", f"{data['avg_engagement']}%", "📊"),
-                ("Viral Score", f"{data['avg_viral_score']}/100", "🔥")
+                ("Total Posts", data.get('total_posts', 0), "📤"),
+                ("Total Likes", f"{data.get('total_likes', 0):,}", "❤️"),
+                ("Total Comments", data.get('total_comments', 0), "💬"),
+                ("Total Views", f"{data.get('total_views', 0):,}", "👁️"),
+                ("Avg Engagement", f"{data.get('avg_engagement', 0)}%", "📊"),
+                ("Viral Score", f"{data.get('avg_viral_score', 0)}/100", "🔥")
             ]
             
             for idx, (label, value, icon) in enumerate(stats):
@@ -1096,19 +1163,21 @@ These times are optimized for maximum engagement!
             )
             best_frame.pack(fill=tk.X, padx=10, pady=10)
             
+            best_post = data.get('best_post', {})
+            
             tk.Label(
                 best_frame,
-                text=f"📹 {data['best_post']['filename']}",
+                text=f"📹 {best_post.get('filename', 'No posts yet')}",
                 font=("Arial", 11)
             ).pack(pady=5)
             
             tk.Label(
                 best_frame,
-                text=f"Engagement: {data['best_post']['engagement']}% | Viral Score: {data['best_post']['viral_score']}/100",
+                text=f"Engagement: {best_post.get('engagement', 0)}% | Viral Score: {best_post.get('viral_score', 0)}/100",
                 font=("Arial", 10)
             ).pack()
             
-            # Shadow Ban Check
+            # Shadow Ban Status
             shadow_frame = tk.LabelFrame(
                 scrollable_frame,
                 text="🔍 Shadow Ban Status",
@@ -1136,7 +1205,7 @@ These times are optimized for maximum engagement!
             
             tk.Label(
                 shadow_frame,
-                text=f"Reach Change: {shadow_data.get('drop_percentage', 0)}%",
+                text=f"Reach Change: {shadow_data.get('drop_percentage', 0):.1f}%",
                 font=("Arial", 10)
             ).pack()
             
@@ -1152,11 +1221,11 @@ These times are optimized for maximum engagement!
             
             top_hashtags = data.get('top_hashtags', [])
             
-            if top_hashtags:
+            if top_hashtags and len(top_hashtags) > 0:
                 for i, hashtag in enumerate(top_hashtags[:5], 1):
                     tk.Label(
                         hashtag_frame,
-                        text=f"{i}. #{hashtag['hashtag']} (Score: {hashtag['score']}, Used: {hashtag['used']}x)",
+                        text=f"{i}. #{hashtag.get('hashtag', 'N/A')} (Score: {hashtag.get('score', 0)}, Used: {hashtag.get('used', 0)}x)",
                         font=("Arial", 10)
                     ).pack(anchor="w", pady=2)
             else:
@@ -1177,7 +1246,7 @@ These times are optimized for maximum engagement!
             )
             times_frame.pack(fill=tk.X, padx=10, pady=10)
             
-            recommended_times = data.get('recommended_times', [])
+            recommended_times = data.get('recommended_times', ["10:00", "14:00", "18:00", "21:00"])
             times_text = ", ".join(recommended_times)
             
             tk.Label(
@@ -1203,6 +1272,7 @@ These times are optimized for maximum engagement!
         except Exception as e:
             self.log(f"❌ Dashboard error: {e}")
             messagebox.showerror("Error", f"Could not load dashboard: {e}")
+
     
     def show_hashtag_analytics(self):
         """Hashtag performance analytics"""
@@ -1263,6 +1333,30 @@ These times are optimized for maximum engagement!
             font=("Arial", 10)
         ).pack(pady=10)
     
+    def sync_instagram_posts(self):
+        """Sync existing Instagram posts"""
+        if not self.insta_manager.current_username:
+            messagebox.showerror("Error", "Please login first!")
+            return
+        
+        confirm = messagebox.askyesno(
+            "Sync Posts",
+            "This will fetch your last 50 Instagram posts and add to analytics.\n\nProceed?"
+        )
+        
+        if confirm:
+            self.log("🔄 Syncing Instagram posts...")
+            
+            def sync_thread():
+                success, message = self.insta_manager.sync_existing_posts()
+                if success:
+                    messagebox.showinfo("Success", message)
+                    self.refresh_quick_stats()
+                else:
+                    messagebox.showerror("Error", message)
+            
+            threading.Thread(target=sync_thread, daemon=True).start()
+
     def show_caption_analytics(self):
         """Caption A/B testing results"""
         if not self.insta_manager.current_username:
@@ -1373,37 +1467,164 @@ Keep up the good work! 🎉
     # ==================== UTILITY FUNCTIONS ====================
     
     def refresh_quick_stats(self):
-        """Refresh quick stats panel"""
+        """Refresh with LIVE Instagram data"""
         if not self.insta_manager.current_username:
             return
         
-        self.log("🔄 Refreshing stats...")
+        selected_range = self.stats_range.get()
+        
+        range_map = {
+            "7 Days": 7,
+            "14 Days": 14,
+            "30 Days": 30,
+            "90 Days": 90,
+            "6 Months": 180,
+            "1 Year": 365,
+            "Lifetime": 99999
+        }
+        
+        days = range_map.get(selected_range, 7)
+        self.log(f"🔄 Fetching LIVE stats from Instagram for {selected_range}...")
         
         try:
-            data = self.analytics.get_dashboard_data(
-                self.insta_manager.current_username,
-                days=7
+            # Fetch LIVE from Instagram
+            user_info = self.insta_manager.client.user_info_by_username(
+                self.insta_manager.current_username
             )
             
-            if data:
-                self.stat_boxes["Total Posts"].config(text=str(data['total_posts']))
-                self.stat_boxes["Total Likes"].config(text=f"{data['total_likes']:,}")
-                self.stat_boxes["Avg Engagement"].config(text=f"{data['avg_engagement']}%")
-                
-                # Get follower count
-                account_info = self.insta_manager.get_account_info()
-                if account_info:
-                    self.stat_boxes["Followers Growth"].config(
-                        text=str(account_info['followers'])
-                    )
+            # Get recent posts
+            from datetime import timezone, timedelta
             
-            # Update posts today
+            if days == 99999:
+                amount = min(user_info.media_count, 100)
+            else:
+                amount = min(50, days)
+            
+            try:
+                medias = self.insta_manager.client.user_medias(user_info.pk, amount=amount)
+            except Exception as e:
+                self.log(f"⚠️ Private API failed: {e}")
+                self._fallback_to_database_stats(days)
+                return
+            
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days) if days != 99999 else datetime(2000, 1, 1, tzinfo=timezone.utc)
+            
+            total_posts = 0
+            total_likes = 0
+            total_comments = 0
+            total_views = 0
+            
+            for media in medias:
+                if media.taken_at < cutoff:
+                    break
+                
+                total_posts += 1
+                total_likes += media.like_count or 0
+                total_comments += media.comment_count or 0
+                total_views += media.view_count or 0
+            
+            avg_engagement = 0
+            if total_views > 0:
+                avg_engagement = round(((total_likes + total_comments) / total_views) * 100, 2)
+            
+            # Update UI
+            self.stat_boxes["Total Posts"].config(text=str(total_posts))
+            self.stat_boxes["Total Likes"].config(text=f"{total_likes:,}")
+            self.stat_boxes["Avg Engagement"].config(text=f"{avg_engagement}%")
+            self.stat_boxes["Followers"].config(text=str(user_info.follower_count))
+            
             today_count = self.db.get_today_post_count(self.insta_manager.current_username)
             self.posts_today.config(text=f"📤 Posts Today: {today_count}/4")
             
-            self.log("✅ Stats refreshed")
+            self.log(f"✅ LIVE stats: {total_posts} posts, {total_likes:,} likes")
+            
         except Exception as e:
-            self.log(f"❌ Stats refresh error: {e}")
+            self.log(f"❌ Error fetching live stats: {e}")
+            self._fallback_to_database_stats(days)
+    
+    def _fallback_to_database_stats(self, days):
+        """Fallback to database if Instagram API fails"""
+        try:
+            if days == 99999:
+                data = self.analytics.get_lifetime_stats(self.insta_manager.current_username)
+            else:
+                data = self.analytics.get_dashboard_data(self.insta_manager.current_username, days)
+            
+            if data:
+                self.stat_boxes["Total Posts"].config(text=str(data.get('total_posts', 0)))
+                self.stat_boxes["Total Likes"].config(text=f"{data.get('total_likes', 0):,}")
+                self.stat_boxes["Avg Engagement"].config(text=f"{data.get('avg_engagement', 0)}%")
+                self.log("ℹ️ Using database stats (Instagram API unavailable)")
+        except Exception as e:
+            self.log(f"⚠️ Could not load stats: {e}")
+
+        # Fallback to database if API fails
+        self._fallback_to_database_stats(days)
+    
+    def _fallback_to_database_stats(self, days):
+        """Fallback to database if Instagram API fails"""
+        try:
+            if days == 99999:
+                data = self.analytics.get_lifetime_stats(self.insta_manager.current_username)
+            else:
+                data = self.analytics.get_dashboard_data(self.insta_manager.current_username, days)
+            
+            if data:
+                self.stat_boxes["Total Posts"].config(text=str(data.get('total_posts', 0)))
+                self.stat_boxes["Total Likes"].config(text=f"{data.get('total_likes', 0):,}")
+                self.stat_boxes["Avg Engagement"].config(text=f"{data.get('avg_engagement', 0)}%")
+                self.log("ℹ️ Using database stats (Instagram API unavailable)")
+        except Exception as e:
+            self.log(f"⚠️ Could not load stats: {e}")
+
+
+    def _fetch_live_instagram_stats(self, days):
+        """Fetch real-time stats from Instagram API"""
+        try:
+            from datetime import datetime, timedelta
+            
+            user_info = self.insta_manager.client.user_info_by_username(
+                self.insta_manager.current_username
+            )
+            
+            # Fetch posts based on date range
+            if days == 99999:
+                amount = user_info.media_count  # All posts
+            else:
+                amount = min(50, days * 2)  # Estimate
+            
+            medias = self.insta_manager.client.user_medias(user_info.pk, amount=amount)
+            
+            cutoff_date = datetime.now() - timedelta(days=days) if days != 99999 else datetime(2000, 1, 1)
+            
+            total_posts = 0
+            total_likes = 0
+            total_comments = 0
+            total_views = 0
+            
+            for media in medias:
+                if media.taken_at < cutoff_date:
+                    break
+                
+                total_posts += 1
+                total_likes += media.like_count or 0
+                total_comments += media.comment_count or 0
+                total_views += media.view_count or 0
+            
+            avg_engagement = 0
+            if total_views > 0:
+                avg_engagement = ((total_likes + total_comments) / total_views) * 100
+            
+            return {
+                'total_posts': total_posts,
+                'total_likes': total_likes,
+                'total_comments': total_comments,
+                'total_views': total_views,
+                'avg_engagement': round(avg_engagement, 2)
+            }
+        except Exception as e:
+            print(f"Live fetch error: {e}")
+            return None
     
     def reload_captions(self):
         """Reload captions from file"""
