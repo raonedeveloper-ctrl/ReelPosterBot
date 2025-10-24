@@ -169,3 +169,4 @@ class CaptionGenerator:
         return len(self.captions)
 
 print("✅ Smart Caption Generator loaded")
+ 

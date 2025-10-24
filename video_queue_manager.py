@@ -186,3 +186,4 @@ class VideoQueueManager:
         return f"vid_{int(datetime.now().timestamp())}_{len(self.queue_data['queue'])}"
 
 print("✅ Video Queue Manager loaded")
+

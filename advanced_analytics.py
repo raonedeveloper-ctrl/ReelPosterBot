@@ -526,3 +526,4 @@ class AdvancedAnalytics:
 
 # Initialize on import
 print("✅ Advanced Analytics Engine loaded")
+ 

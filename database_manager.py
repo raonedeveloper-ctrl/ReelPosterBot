@@ -178,3 +178,4 @@ class DatabaseManager:
         cursor.execute('DELETE FROM accounts WHERE username = ?', (username,))
         conn.commit()
         conn.close()
+

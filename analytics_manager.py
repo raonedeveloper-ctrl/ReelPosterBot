@@ -180,3 +180,4 @@ class AnalyticsManager:
         conn.close()
         
         return best_times
+ 

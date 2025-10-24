@@ -55,3 +55,4 @@ if __name__ == "__main__":
     print("🔧 Fixing database...")
     fix_database()
     print("\n🚀 Now run: python main.py")
+

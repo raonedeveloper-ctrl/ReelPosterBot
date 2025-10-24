@@ -139,3 +139,4 @@ if not os.path.exists(VIDEO_QUEUE_PATH):
         json.dump({"queue": [], "history": []}, f)
 
 print(f"✅ Configuration loaded - Version {APP_VERSION}")
+ 
