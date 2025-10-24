@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from collections import defaultdict
 import json
+
 from config import (
     ANALYTICS_DB_PATH,
     LOW_ENGAGEMENT_THRESHOLD,
@@ -10,6 +11,7 @@ from config import (
 )
 
 class AdvancedAnalytics:
+    
     def __init__(self):
         self.db_path = ANALYTICS_DB_PATH
         self.init_advanced_tables()
@@ -123,8 +125,8 @@ class AdvancedAnalytics:
     
     # ==================== POST ANALYTICS ====================
     
-    def save_post_analytics(self, media_id, username, video_filename, caption, 
-                           likes, comments, views, shares=0, saves=0, reach=0):
+    def save_post_analytics(self, media_id, username, video_filename, caption,
+                            likes, comments, views, shares=0, saves=0, reach=0):
         """Save comprehensive post analytics"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -142,13 +144,13 @@ class AdvancedAnalytics:
         
         try:
             cursor.execute('''
-                INSERT OR REPLACE INTO post_analytics 
-                (media_id, username, video_filename, caption_variant, upload_date, 
-                 upload_hour, upload_day_of_week, likes, comments, views, shares, 
+                INSERT OR REPLACE INTO post_analytics
+                (media_id, username, video_filename, caption_variant, upload_date,
+                 upload_hour, upload_day_of_week, likes, comments, views, shares,
                  saves, reach, engagement_rate, viral_score)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (media_id, username, video_filename, caption[:50], upload_time, 
-                  upload_hour, upload_day, likes, comments, views, shares, 
+            ''', (media_id, username, video_filename, caption[:50], upload_time,
+                  upload_hour, upload_day, likes, comments, views, shares,
                   saves, reach, engagement_rate, viral_score))
             
             conn.commit()
@@ -185,7 +187,7 @@ class AdvancedAnalytics:
             performance_score = (engagement / max(reach, 1)) * 100
             
             cursor.execute('''
-                INSERT INTO hashtag_performance 
+                INSERT INTO hashtag_performance
                 (hashtag, username, media_id, engagement, reach, performance_score)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (hashtag, username, media_id, engagement, reach, performance_score))
@@ -215,8 +217,8 @@ class AdvancedAnalytics:
         hashtags = cursor.fetchall()
         conn.close()
         
-        return [{'hashtag': h[0], 'score': round(h[1], 2), 
-                 'used': h[2], 'avg_engagement': h[3]} for h in hashtags]
+        return [{'hashtag': h[0], 'score': round(h[1], 2),
+                'used': h[2], 'avg_engagement': h[3]} for h in hashtags]
     
     def get_underperforming_hashtags(self, username, limit=10):
         """Identify hashtags that should be replaced"""
@@ -250,7 +252,7 @@ class AdvancedAnalytics:
         
         try:
             cursor.execute('''
-                INSERT OR IGNORE INTO caption_variants 
+                INSERT OR IGNORE INTO caption_variants
                 (variant_id, caption_text, hashtags)
                 VALUES (?, ?, ?)
             ''', (variant_id, caption_text, hashtags))
@@ -380,7 +382,7 @@ class AdvancedAnalytics:
         # Get previous 7 days reach (8-14 days ago)
         cursor.execute('''
             SELECT AVG(reach) FROM post_analytics
-            WHERE username = ? 
+            WHERE username = ?
             AND upload_date >= datetime('now', '-14 days')
             AND upload_date < datetime('now', '-7 days')
         ''', (username,))
@@ -416,11 +418,11 @@ class AdvancedAnalytics:
         
         # Save check results
         cursor.execute('''
-            INSERT INTO shadow_ban_checks 
-            (username, avg_reach_last_7days, avg_reach_previous_7days, 
+            INSERT INTO shadow_ban_checks
+            (username, avg_reach_last_7days, avg_reach_previous_7days,
              reach_drop_percentage, is_shadow_banned, recovery_suggestions)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (username, int(avg_reach_last_7), int(avg_reach_previous_7), 
+        ''', (username, int(avg_reach_last_7), int(avg_reach_previous_7),
               drop_percentage, int(is_shadow_banned), suggestions_text))
         
         conn.commit()
@@ -465,7 +467,7 @@ class AdvancedAnalytics:
                 growth_rate = ((followers - prev_count) / prev_count) * 100
         
         cursor.execute('''
-            INSERT INTO account_growth 
+            INSERT INTO account_growth
             (username, followers, following, total_posts, avg_engagement_rate, growth_rate)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (username, followers, following, total_posts, avg_engagement, growth_rate))
@@ -523,7 +525,71 @@ class AdvancedAnalytics:
                 'viral_score': round(best_post[2], 2) if best_post else 0
             }
         }
+    
+    # ==================== REAL-TIME STATS (NEW) ====================
+    
+    def save_realtime_snapshot(self, username, followers, following, media_count, engagement_rate):
+        """Save real-time stats snapshot for historical tracking"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute('''
+                INSERT INTO account_growth
+                (username, followers, following, total_posts, avg_engagement_rate, growth_rate)
+                VALUES (?, ?, ?, ?, ?, 0)
+            ''', (username, followers, following, media_count, engagement_rate))
+            
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Error saving realtime snapshot: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def get_follower_history(self, username, days=30):
+        """Get follower count history for charts"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        date_limit = datetime.now() - timedelta(days=days)
+        
+        cursor.execute('''
+            SELECT date, followers
+            FROM account_growth
+            WHERE username = ? AND date >= ?
+            ORDER BY date ASC
+        ''', (username, date_limit))
+        
+        history = cursor.fetchall()
+        conn.close()
+        
+        return [{'date': h[0], 'followers': h[1]} for h in history]
+    
+    def calculate_period_growth(self, username, days=7):
+        """Calculate follower growth in specific period"""
+        history = self.get_follower_history(username, days + 7)  # Get extra data
+        
+        if len(history) < 2:
+            return {'growth': 0, 'percentage': 0, 'daily_avg': 0}
+        
+        # Get start and end of period
+        period_end = history[-1]['followers']
+        period_start = history[0]['followers']
+        
+        growth = period_end - period_start
+        percentage = (growth / period_start * 100) if period_start > 0 else 0
+        daily_avg = growth / days if days > 0 else 0
+        
+        return {
+            'growth': growth,
+            'percentage': round(percentage, 2),
+            'daily_avg': round(daily_avg, 2),
+            'start_followers': period_start,
+            'end_followers': period_end
+        }
+
 
 # Initialize on import
 print("✅ Advanced Analytics Engine loaded")
- 

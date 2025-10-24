@@ -132,6 +132,39 @@ Rich logo ki mindset copy karo! 💰
 ---
 """)
 
+# ==================== REAL-TIME ANALYTICS SETTINGS ====================
+
+# Enable real-time Instagram API data fetching
+ENABLE_REALTIME_STATS = True
+
+# Stats refresh intervals (in seconds)
+STATS_CACHE_DURATION = 300  # 5 minutes cache to avoid rate limits
+AUTO_REFRESH_STATS_INTERVAL = 600  # 10 minutes auto-refresh in GUI
+
+# Time range options for analytics (in days)
+STATS_TIME_RANGES = {
+    '7 days': 7,
+    '14 days': 14,
+    '30 days': 30,
+    '90 days': 90
+}
+
+# Real-time metrics to track
+REALTIME_METRICS = [
+    'followers',
+    'following',
+    'media_count',
+    'total_likes',
+    'total_comments',
+    'total_views',
+    'engagement_rate',
+    'average_likes',
+    'average_comments'
+]
+
+# Top posts limit
+TOP_POSTS_DISPLAY_LIMIT = 10
+
 # Create initial video queue file
 if not os.path.exists(VIDEO_QUEUE_PATH):
     import json
