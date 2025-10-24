@@ -1,0 +1,12 @@
+data/videos_database.db
+captions.txt
+__pycache__/advanced_analytics.cpython-310.pyc
+__pycache__/caption_generator.cpython-310.pyc
+__pycache__/config.cpython-310.pyc
+__pycache__/database_manager.cpython-310.pyc
+__pycache__/instagram_manager.cpython-310.pyc
+__pycache__/scheduler.cpython-310.pyc
+__pycache__/video_queue_manager.cpython-310.pyc
+data/analytics.db
+data/video_queue.json
+data/sessions/Therichlegacy7_session.json
