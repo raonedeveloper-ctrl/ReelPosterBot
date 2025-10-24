@@ -32,52 +32,52 @@ class InstagramManager:
         self.caption_gen = CaptionGenerator(analytics_manager=self.analytics)
         self.retry_count = 0
     
-def login(self, username, password):
-    """Secure login with session management"""
-    try:
-        self.client = Client()
-        self.client.delay_range = [1, 3]
-        
-        session_file = os.path.join(SESSION_SAVE_PATH, f"{username}_session.json")
-        
-        # Try loading existing session
-        if os.path.exists(session_file):
-            try:
-                self.client.load_settings(session_file)
-                self.client.login(username, password)
-                self.current_username = username
-                print(f"✅ Logged in using saved session: {username}")
-                return True, "Logged in successfully using saved session"
-            except Exception as e:
-                print(f"⚠️ Session expired, logging in fresh: {e}")
-        
-        # Fresh login
-        self.client.login(username, password)
-        self.current_username = username
-        
-        # Save session
-        os.makedirs(SESSION_SAVE_PATH, exist_ok=True)
-        self.client.dump_settings(session_file)
-        
-        print(f"✅ Successfully logged in: {username}")
-        return True, f"Successfully logged in as {username}"
-        
-    except ChallengeRequired as e:
-        error_msg = f"Challenge required (2FA/Verification): {e}"
-        print(f"⚠️ {error_msg}")
-        return False, error_msg
-    except LoginRequired as e:
-        error_msg = f"Login failed: {e}"
-        print(f"❌ {error_msg}")
-        return False, error_msg
-    except PleaseWaitFewMinutes as e:
-        error_msg = f"Rate limited. Please wait: {e}"
-        print(f"⏳ {error_msg}")
-        return False, error_msg
-    except Exception as e:
-        error_msg = f"Unexpected login error: {e}"
-        print(f"❌ {error_msg}")
-        return False, error_msg
+    def login(self, username, password):
+        """Secure login with session management"""
+        try:
+            self.client = Client()
+            self.client.delay_range = [1, 3]
+            
+            session_file = os.path.join(SESSION_SAVE_PATH, f"{username}_session.json")
+            
+            # Try loading existing session
+            if os.path.exists(session_file):
+                try:
+                    self.client.load_settings(session_file)
+                    self.client.login(username, password)
+                    self.current_username = username
+                    print(f"✅ Logged in using saved session: {username}")
+                    return True, "Logged in successfully using saved session"
+                except Exception as e:
+                    print(f"⚠️ Session expired, logging in fresh: {e}")
+            
+            # Fresh login
+            self.client.login(username, password)
+            self.current_username = username
+            
+            # Save session
+            os.makedirs(SESSION_SAVE_PATH, exist_ok=True)
+            self.client.dump_settings(session_file)
+            
+            print(f"✅ Successfully logged in: {username}")
+            return True, f"Successfully logged in as {username}"
+            
+        except ChallengeRequired as e:
+            error_msg = f"Challenge required (2FA/Verification): {e}"
+            print(f"⚠️ {error_msg}")
+            return False, error_msg
+        except LoginRequired as e:
+            error_msg = f"Login failed: {e}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
+        except PleaseWaitFewMinutes as e:
+            error_msg = f"Rate limited. Please wait: {e}"
+            print(f"⏳ {error_msg}")
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected login error: {e}"
+            print(f"❌ {error_msg}")
+            return False, error_msg
     
     def logout(self):
         """Safely logout and cleanup"""
@@ -86,11 +86,11 @@ def login(self, username, password):
                 self.client.logout()
                 self.current_username = None
                 print("✅ Logged out successfully")
-                return True
+                return True, "Logged out successfully"
             except Exception as e:
                 print(f"⚠️ Logout warning: {e}")
-                return False
-        return True
+                return False, f"Logout warning: {e}"
+        return True, "Already logged out"
     
     def upload_video(self, video_path, caption="", hashtags=None, attempt=1):
         """
@@ -225,8 +225,6 @@ def login(self, username, password):
         except Exception as e:
             print(f"❌ Error fetching account info: {e}")
             return None
-    
-    # ==================== REAL-TIME STATS (NEW) ====================
     
     def get_realtime_account_stats(self):
         """
