@@ -298,7 +298,6 @@ class InstagramBotPro:
         
         controls_frame.grid_columnconfigure(0, weight=1)
         controls_frame.grid_columnconfigure(1, weight=1)
-
     
     def create_logs_panel(self, parent):
         """Activity logs panel"""
@@ -1009,16 +1008,17 @@ These times are optimized for maximum engagement!
     # ==================== ANALYTICS FUNCTIONS ====================
     
     def show_dashboard(self):
-        """Enhanced Real-Time Analytics Dashboard"""
+        """Professional analytics dashboard"""
         if not self.insta_manager.current_username:
             messagebox.showinfo("Info", "Please login first!")
             return
         
+        self.log("📊 Loading dashboard...")
+        
         # Create dashboard window
         dashboard = tk.Toplevel(self.root)
-        dashboard.title(f"📊 Real-Time Analytics - {self.insta_manager.current_username}")
-        dashboard.geometry("1000x700")
-        dashboard.resizable(True, True)
+        dashboard.title("Performance Dashboard")
+        dashboard.geometry("900x700")
         
         # Header
         header = tk.Frame(dashboard, bg=self.colors['primary'], height=60)
@@ -1027,314 +1027,181 @@ These times are optimized for maximum engagement!
         
         tk.Label(
             header,
-            text=f"📊 Real-Time Analytics Dashboard",
+            text=f"📊 Performance Dashboard - @{self.insta_manager.current_username}",
             font=("Arial", 16, "bold"),
             bg=self.colors['primary'],
             fg="white"
-        ).pack(side=tk.LEFT, padx=20, pady=15)
+        ).pack(pady=15)
         
-        # Time range selector
-        range_frame = tk.Frame(header, bg=self.colors['primary'])
-        range_frame.pack(side=tk.RIGHT, padx=20)
-        
-        tk.Label(
-            range_frame,
-            text="Time Range:",
-            font=("Arial", 10),
-            bg=self.colors['primary'],
-            fg="white"
-        ).pack(side=tk.LEFT, padx=5)
-        
-        time_range_var = tk.StringVar(value="7 days")
-        time_ranges = ["7 days", "14 days", "30 days", "90 days"]
-        
-        range_dropdown = ttk.Combobox(
-            range_frame,
-            textvariable=time_range_var,
-            values=time_ranges,
-            state="readonly",
-            width=10
-        )
-        range_dropdown.pack(side=tk.LEFT, padx=5)
-        
-        # Refresh button
-        refresh_btn = tk.Button(
-            range_frame,
-            text="🔄 Refresh",
-            font=("Arial", 9, "bold"),
-            bg="#4CAF50",
-            fg="white",
-            command=lambda: load_dashboard_data(time_range_var.get())
-        )
-        refresh_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Main scrollable frame
-        main_canvas = tk.Canvas(dashboard)
-        scrollbar = tk.Scrollbar(dashboard, orient="vertical", command=main_canvas.yview)
-        scrollable_frame = tk.Frame(main_canvas)
-        
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all"))
-        )
-        
-        main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        main_canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Status label
-        status_label = tk.Label(
-            scrollable_frame,
-            text="Loading real-time data from Instagram...",
-            font=("Arial", 11),
-            fg="gray"
-        )
-        status_label.pack(pady=20)
-        
-        def load_dashboard_data(time_range_str):
-            """Load and display dashboard data"""
-            status_label.config(text="🔄 Fetching real-time data from Instagram API...")
-            dashboard.update()
+        # Get dashboard data
+        try:
+            data = self.insta_manager.get_performance_dashboard(days=7)
             
-            # Clear existing widgets
-            for widget in scrollable_frame.winfo_children():
-                if widget != status_label:
-                    widget.destroy()
-            
-            # Parse time range
-            days = int(time_range_str.split()[0])
-            
-            # Fetch real-time insights
-            insights = self.insta_manager.refresh_account_insights(days)
-            
-            if not insights:
-                status_label.config(
-                    text="❌ Could not fetch real-time data. Please check connection and try again.",
-                    fg="red"
-                )
+            if not data:
+                messagebox.showerror("Error", "Could not load dashboard data!")
+                dashboard.destroy()
                 return
             
-            status_label.config(text=f"✅ Last updated: {insights['last_updated']}", fg="green")
+            # Scrollable content
+            canvas = tk.Canvas(dashboard)
+            scrollbar = tk.Scrollbar(dashboard, orient="vertical", command=canvas.yview)
+            scrollable_frame = tk.Frame(canvas)
             
-            account = insights['account']
-            period = insights['period_stats']
-            top_posts = insights['top_posts']
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
             
-            # ============ ACCOUNT OVERVIEW ============
-            overview_frame = tk.LabelFrame(
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            # Overall Stats
+            stats_frame = tk.LabelFrame(
                 scrollable_frame,
-                text="📱 Account Overview",
+                text="📈 Last 7 Days Overview",
                 font=("Arial", 12, "bold"),
                 padx=20,
                 pady=15
             )
-            overview_frame.pack(fill=tk.X, padx=10, pady=10)
+            stats_frame.pack(fill=tk.X, padx=10, pady=10)
             
-            overview_grid = tk.Frame(overview_frame)
-            overview_grid.pack(fill=tk.X)
+            stats_grid = tk.Frame(stats_frame)
+            stats_grid.pack()
             
-            overview_stats = [
-                ("👥 Followers", f"{account['followers']:,}", "primary"),
-                ("➕ Following", f"{account['following']:,}", "info"),
-                ("📸 Total Posts", f"{account['media_count']:,}", "success"),
-                ("💬 Engagement Rate", f"{account['engagement_rate']}%", "warning"),
+            stats = [
+                ("Total Posts", data['total_posts'], "📤"),
+                ("Total Likes", f"{data['total_likes']:,}", "❤️"),
+                ("Total Comments", data['total_comments'], "💬"),
+                ("Total Views", f"{data['total_views']:,}", "👁️"),
+                ("Avg Engagement", f"{data['avg_engagement']}%", "📊"),
+                ("Viral Score", f"{data['avg_viral_score']}/100", "🔥")
             ]
             
-            for idx, (label, value, color) in enumerate(overview_stats):
-                box = tk.Frame(overview_grid, relief=tk.RAISED, borderwidth=2, bg=self.colors.get(color, "white"))
-                box.grid(row=0, column=idx, padx=10, pady=10, sticky="ew")
+            for idx, (label, value, icon) in enumerate(stats):
+                box = tk.Frame(stats_grid, relief=tk.RAISED, borderwidth=2, padx=15, pady=10)
+                box.grid(row=idx//3, column=idx%3, padx=10, pady=10)
                 
-                tk.Label(box, text=label, font=("Arial", 10), bg=self.colors.get(color, "white"), fg="white").pack(pady=5)
-                tk.Label(box, text=value, font=("Arial", 16, "bold"), bg=self.colors.get(color, "white"), fg="white").pack(pady=5)
-                
-                overview_grid.grid_columnconfigure(idx, weight=1)
-            
-            # ============ PERIOD STATISTICS ============
-            period_frame = tk.LabelFrame(
-                scrollable_frame,
-                text=f"📊 Performance (Last {days} Days)",
-                font=("Arial", 12, "bold"),
-                padx=20,
-                pady=15
-            )
-            period_frame.pack(fill=tk.X, padx=10, pady=10)
-            
-            period_grid = tk.Frame(period_frame)
-            period_grid.pack(fill=tk.X)
-            
-            period_stats = [
-                ("📝 Posts", f"{period['total_posts']}", "📈"),
-                ("❤️ Total Likes", f"{period['total_likes']:,}", "❤️"),
-                ("💬 Total Comments", f"{period['total_comments']:,}", "💬"),
-                ("👁️ Total Views", f"{period['total_views']:,}", "👁️"),
-                ("📈 Avg Likes/Post", f"{period['avg_likes_per_post']:.1f}", "⭐"),
-                ("💭 Avg Comments/Post", f"{period['avg_comments_per_post']:.1f}", "💭"),
-                ("🔥 Engagement Rate", f"{period['engagement_rate']}%", "🔥"),
-            ]
-            
-            for idx, (label, value, icon) in enumerate(period_stats):
-                row = idx // 4
-                col = idx % 4
-                
-                box = tk.Frame(period_grid, relief=tk.RAISED, borderwidth=1, padx=15, pady=10)
-                box.grid(row=row, column=col, padx=5, pady=5, sticky="ew")
-                
-                tk.Label(box, text=icon, font=("Arial", 20)).pack()
-                tk.Label(box, text=value, font=("Arial", 14, "bold")).pack()
+                tk.Label(box, text=icon, font=("Arial", 24)).pack()
+                tk.Label(box, text=str(value), font=("Arial", 16, "bold")).pack()
                 tk.Label(box, text=label, font=("Arial", 9)).pack()
-                
-                period_grid.grid_columnconfigure(col, weight=1)
             
-            # ============ TOP PERFORMING POSTS ============
-            if top_posts:
-                top_frame = tk.LabelFrame(
-                    scrollable_frame,
-                    text=f"🏆 Top {len(top_posts)} Performing Posts",
-                    font=("Arial", 12, "bold"),
-                    padx=10,
-                    pady=10
-                )
-                top_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-                
-                # Create table
-                columns = ("Rank", "Caption", "Likes", "Comments", "Views", "Engagement", "Date")
-                tree = ttk.Treeview(top_frame, columns=columns, show="headings", height=10)
-                
-                # Configure columns
-                tree.heading("Rank", text="🏆 Rank")
-                tree.heading("Caption", text="📝 Caption")
-                tree.heading("Likes", text="❤️ Likes")
-                tree.heading("Comments", text="💬 Comments")
-                tree.heading("Views", text="👁️ Views")
-                tree.heading("Engagement", text="📊 Total")
-                tree.heading("Date", text="📅 Date")
-                
-                tree.column("Rank", width=60, anchor="center")
-                tree.column("Caption", width=250, anchor="w")
-                tree.column("Likes", width=80, anchor="center")
-                tree.column("Comments", width=90, anchor="center")
-                tree.column("Views", width=80, anchor="center")
-                tree.column("Engagement", width=80, anchor="center")
-                tree.column("Date", width=120, anchor="center")
-                
-                # Add scrollbar
-                tree_scroll = tk.Scrollbar(top_frame, orient="vertical", command=tree.yview)
-                tree.configure(yscrollcommand=tree_scroll.set)
-                
-                # Populate data
-                for idx, post in enumerate(top_posts, 1):
-                    caption_preview = post['caption'][:40] + "..." if len(post['caption']) > 40 else post['caption']
-                    date_str = post['taken_at'].split()[0]  # Just date, no time
-                    
-                    tree.insert("", "end", values=(
-                        f"#{idx}",
-                        caption_preview,
-                        f"{post['likes']:,}",
-                        f"{post['comments']:,}",
-                        f"{post['views']:,}",
-                        f"{post['engagement']:,}",
-                        date_str
-                    ))
-                
-                tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-                tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+            # Best Post
+            best_frame = tk.LabelFrame(
+                scrollable_frame,
+                text="🏆 Best Performing Post",
+                font=("Arial", 12, "bold"),
+                padx=20,
+                pady=15
+            )
+            best_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            tk.Label(
+                best_frame,
+                text=f"📹 {data['best_post']['filename']}",
+                font=("Arial", 11)
+            ).pack(pady=5)
+            
+            tk.Label(
+                best_frame,
+                text=f"Engagement: {data['best_post']['engagement']}% | Viral Score: {data['best_post']['viral_score']}/100",
+                font=("Arial", 10)
+            ).pack()
+            
+            # Shadow Ban Check
+            shadow_frame = tk.LabelFrame(
+                scrollable_frame,
+                text="🔍 Shadow Ban Status",
+                font=("Arial", 12, "bold"),
+                padx=20,
+                pady=15
+            )
+            shadow_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            shadow_data = data.get('shadow_ban', {})
+            
+            if shadow_data.get('is_shadow_banned'):
+                status_color = "red"
+                status_text = "⚠️ POSSIBLE SHADOW BAN DETECTED"
+            else:
+                status_color = "green"
+                status_text = "✅ No Shadow Ban Detected"
+            
+            tk.Label(
+                shadow_frame,
+                text=status_text,
+                font=("Arial", 12, "bold"),
+                fg=status_color
+            ).pack(pady=5)
+            
+            tk.Label(
+                shadow_frame,
+                text=f"Reach Change: {shadow_data.get('drop_percentage', 0)}%",
+                font=("Arial", 10)
+            ).pack()
+            
+            # Top Hashtags
+            hashtag_frame = tk.LabelFrame(
+                scrollable_frame,
+                text="🏷️ Top Performing Hashtags",
+                font=("Arial", 12, "bold"),
+                padx=20,
+                pady=15
+            )
+            hashtag_frame.pack(fill=tk.X, padx=10, pady=10)
+            
+            top_hashtags = data.get('top_hashtags', [])
+            
+            if top_hashtags:
+                for i, hashtag in enumerate(top_hashtags[:5], 1):
+                    tk.Label(
+                        hashtag_frame,
+                        text=f"{i}. #{hashtag['hashtag']} (Score: {hashtag['score']}, Used: {hashtag['used']}x)",
+                        font=("Arial", 10)
+                    ).pack(anchor="w", pady=2)
             else:
                 tk.Label(
-                    scrollable_frame,
-                    text="No posts found in selected time range.",
-                    font=("Arial", 11),
+                    hashtag_frame,
+                    text="Not enough data yet. Keep posting!",
+                    font=("Arial", 10),
                     fg="gray"
-                ).pack(pady=20)
+                ).pack()
             
-            # ============ EXPORT BUTTON ============
-            export_frame = tk.Frame(scrollable_frame)
-            export_frame.pack(pady=15)
-            
-            tk.Button(
-                export_frame,
-                text="📊 Export Report (CSV)",
-                font=("Arial", 10, "bold"),
-                bg="#2196F3",
-                fg="white",
-                command=lambda: self.export_analytics_report(insights, days),
+            # Recommended Times
+            times_frame = tk.LabelFrame(
+                scrollable_frame,
+                text="⏰ AI-Recommended Posting Times",
+                font=("Arial", 12, "bold"),
                 padx=20,
-                pady=10
-            ).pack()
-        
-        # Pack canvas and scrollbar
-        main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Load initial data
-        self.root.after(500, lambda: load_dashboard_data("7 days"))
-    
-    def export_analytics_report(self, insights, days):
-        """Export analytics report to CSV"""
-        try:
-            import csv
-            
-            filename = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                initialfile=f"instagram_analytics_{self.insta_manager.current_username}_{days}days_{datetime.now().strftime('%Y%m%d')}.csv"
+                pady=15
             )
+            times_frame.pack(fill=tk.X, padx=10, pady=10)
             
-            if not filename:
-                return
+            recommended_times = data.get('recommended_times', [])
+            times_text = ", ".join(recommended_times)
             
-            with open(filename, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                
-                # Account Overview
-                writer.writerow([f"Instagram Analytics Report - {self.insta_manager.current_username}"])
-                writer.writerow([f"Period: Last {days} days"])
-                writer.writerow([f"Generated: {insights['last_updated']}"])
-                writer.writerow([])
-                
-                # Account Stats
-                writer.writerow(["ACCOUNT OVERVIEW"])
-                writer.writerow(["Metric", "Value"])
-                account = insights['account']
-                writer.writerow(["Username", account['username']])
-                writer.writerow(["Full Name", account['full_name']])
-                writer.writerow(["Followers", account['followers']])
-                writer.writerow(["Following", account['following']])
-                writer.writerow(["Total Posts", account['media_count']])
-                writer.writerow(["Engagement Rate", f"{account['engagement_rate']}%"])
-                writer.writerow([])
-                
-                # Period Stats
-                writer.writerow([f"PERIOD STATISTICS (Last {days} days)"])
-                writer.writerow(["Metric", "Value"])
-                period = insights['period_stats']
-                writer.writerow(["Total Posts", period['total_posts']])
-                writer.writerow(["Total Likes", period['total_likes']])
-                writer.writerow(["Total Comments", period['total_comments']])
-                writer.writerow(["Total Views", period['total_views']])
-                writer.writerow(["Avg Likes per Post", round(period['avg_likes_per_post'], 2)])
-                writer.writerow(["Avg Comments per Post", round(period['avg_comments_per_post'], 2)])
-                writer.writerow(["Period Engagement Rate", f"{period['engagement_rate']}%"])
-                writer.writerow([])
-                
-                # Top Posts
-                writer.writerow(["TOP PERFORMING POSTS"])
-                writer.writerow(["Rank", "Caption", "Likes", "Comments", "Views", "Total Engagement", "Date"])
-                for idx, post in enumerate(insights['top_posts'], 1):
-                    writer.writerow([
-                        idx,
-                        post['caption'],
-                        post['likes'],
-                        post['comments'],
-                        post['views'],
-                        post['engagement'],
-                        post['taken_at']
-                    ])
+            tk.Label(
+                times_frame,
+                text=times_text,
+                font=("Arial", 12, "bold"),
+                fg=self.colors['info']
+            ).pack(pady=5)
             
-            self.log(f"✅ Report exported: {filename}")
-            messagebox.showinfo("Export Success", f"Analytics report exported to:\n{filename}")
+            tk.Label(
+                times_frame,
+                text="Based on your historical engagement data",
+                font=("Arial", 9),
+                fg="gray"
+            ).pack()
+            
+            # Pack canvas
+            canvas.pack(side="left", fill="both", expand=True)
+            scrollbar.pack(side="right", fill="y")
+            
+            self.log("✅ Dashboard loaded successfully")
             
         except Exception as e:
-            self.log(f"❌ Export error: {e}")
-            messagebox.showerror("Export Failed", f"Could not export report:\n{str(e)}")
+            self.log(f"❌ Dashboard error: {e}")
+            messagebox.showerror("Error", f"Could not load dashboard: {e}")
     
     def show_hashtag_analytics(self):
         """Hashtag performance analytics"""
@@ -1717,4 +1584,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = InstagramBotPro(root)
     root.mainloop()
-

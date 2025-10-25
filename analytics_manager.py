@@ -158,6 +158,41 @@ class AnalyticsManager:
         
         return growth
     
+        def fix_missing_columns(self):
+            """Fix missing columns in existing database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        try:
+            # Add viral_score column if missing
+            cursor.execute('''
+                ALTER TABLE post_analytics 
+                ADD COLUMN viral_score REAL DEFAULT 0
+            ''')
+            print("✅ Added viral_score column")
+        except:
+            pass  # Column already exists
+        
+        try:
+            # Add upload_hour column if missing
+            cursor.execute('''
+                ALTER TABLE post_analytics 
+                ADD COLUMN upload_hour INTEGER DEFAULT 0
+            ''')
+            print("✅ Added upload_hour column")
+        except:
+            pass
+        
+        try:
+            # Add upload_day_of_week column if missing
+            cursor.execute('''
+                ALTER TABLE post_analytics 
+                ADD COLUMN upload_day_of_week INTEGER DEFAULT 0
+            ''')
+            print("✅ Added upload_day_of_week column")
+        except:
+            pass
+
     def analyze_best_posting_time(self, username):
         """Best posting time analyze karo based on engagement"""
         conn = sqlite3.connect(self.db_path)
@@ -176,8 +211,8 @@ class AnalyticsManager:
             LIMIT 5
         ''', (username,))
         
+        
         best_times = cursor.fetchall()
         conn.close()
         
         return best_times
- 
